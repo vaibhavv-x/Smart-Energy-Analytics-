@@ -9,7 +9,7 @@
 
 **Tools**: Hadoop HDFS, Hadoop MapReduce (YARN), Apache Hive, Apache Spark (PySpark, Spark SQL, Spark MLlib), Streamlit, Matplotlib  
 **Dataset**: UCI Individual Household Electric Power Consumption  
-**Based on**: the MIT-licensed project by Praveen Sagar M and Naveen S ([source](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting)). Section 11 states which parts come from that project and which parts are ours.
+**Based on**: an open-source project released under the MIT licence (see `LICENSE`). Section 11 states which parts come from that project and which parts are ours.
 
 ---
 
@@ -193,4 +193,3 @@ Next steps would be to run Spark on YARN, add weather data to the features, use 
 3. Apache Hive documentation: language manual, HiveServer2. https://hive.apache.org/
 4. Apache Spark documentation: Spark SQL, MLlib. https://spark.apache.org/docs/3.5.3/
 5. United Nations. *Sustainable Development Goal 7*. https://sdgs.un.org/goals/goal7
-6. Praveen Sagar M and Naveen S. *Smart-Energy-Analytics-Forecasting* (MIT licence). https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting

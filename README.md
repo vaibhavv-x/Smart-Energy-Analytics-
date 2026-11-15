@@ -248,7 +248,7 @@ bash run_on_mac.sh stop       # stop HiveServer2 and Hadoop
 
 - Setup details and troubleshooting: [docs/installation.md](docs/installation.md)
 - What each stage does and how to run it alone: [docs/execution.md](docs/execution.md)
-- Feature list and open items: [FEATURES.md](FEATURES.md), [TODO.md](TODO.md)
+- Feature list: [FEATURES.md](FEATURES.md)
 
 ---
 
@@ -277,7 +277,6 @@ Smart-Energy-Analytics-Forecasting/
 │
 ├── run_on_mac.sh                       # One-command setup and run for macOS (Hadoop, Hive, pipeline)
 ├── FEATURES.md                         # Everything the project contains
-├── TODO.md                             # Open items
 │
 ├── hadoop/                             # Hadoop MapReduce & HDFS modules
 │   ├── mapper.py, reducer.py           # Job 1: daily energy totals

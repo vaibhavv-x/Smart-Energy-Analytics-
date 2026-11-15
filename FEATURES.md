@@ -3,9 +3,9 @@
 Smart Energy Analytics: household electricity consumption analysis and next-day demand forecasting.
 Batch 30: Vaibhav (AP23110010425) and Saubhagya Kashyap (AP23110010439).
 
-This file lists everything that exists in the folder today. For what still has to be done, see [TODO.md](TODO.md).
+This file lists everything the project contains.
 
-**Base repo:** [Praveensagar07/Smart-Energy-Analytics-Forecasting](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting), MIT licence. Keep the `LICENSE` file and the credit lines. The section "What we added" below lists our own work.
+**Base project:** built on an open-source project released under the MIT licence (see `LICENSE`). The section "What we added" below lists our own work.
 
 ## Dataset
 
