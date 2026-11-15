@@ -22,12 +22,10 @@ import sys
 import pandas as pd
 
 # Setup JVM & Hadoop environment for Windows if running locally
-os.environ.setdefault("JAVA_HOME", r"C:\Users\PRAVEENRAJ\jdk-17\jdk-17.0.14+7")
-os.environ.setdefault("HADOOP_HOME", r"C:\hadoop")
-java_bin = os.path.join(os.environ["JAVA_HOME"], "bin")
-hadoop_bin = os.path.join(os.environ["HADOOP_HOME"], "bin")
-path_sep = ";" if os.name == "nt" else ":"
-os.environ["PATH"] = f"{java_bin}{path_sep}{hadoop_bin}{path_sep}{os.environ.get('PATH', '')}"
+# Put JAVA_HOME/bin and HADOOP_HOME/bin on PATH when those variables are set.
+for _var in ("JAVA_HOME", "HADOOP_HOME"):
+    if os.environ.get(_var):
+        os.environ["PATH"] = os.path.join(os.environ[_var], "bin") + os.pathsep + os.environ.get("PATH", "")
 os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
@@ -59,11 +57,17 @@ def run_queries():
 
     print(f"[*] Registering Daily and Hourly tables in Hive Metastore view...")
     # Load daily
-    df_daily = spark.read.csv(daily_csv, header=True, inferSchema=True)
+    # When SMART_ENERGY_HDFS_URI is set, Spark reads the cleaned tables from HDFS.
+    hdfs_uri = os.environ.get("SMART_ENERGY_HDFS_URI", "").rstrip("/")
+    daily_src = f"{hdfs_uri}/cleaned/daily" if hdfs_uri else daily_csv
+    hourly_src = f"{hdfs_uri}/cleaned/hourly" if hdfs_uri else hourly_csv
+    print(f"[*] Daily table source:  {daily_src}")
+    print(f"[*] Hourly table source: {hourly_src}")
+    df_daily = spark.read.csv(daily_src, header=True, inferSchema=True)
     df_daily.createOrReplaceTempView("daily_energy_consumption")
 
     # Load hourly
-    df_hourly = spark.read.csv(hourly_csv, header=True, inferSchema=True)
+    df_hourly = spark.read.csv(hourly_src, header=True, inferSchema=True)
     df_hourly.createOrReplaceTempView("hourly_energy_consumption")
 
     queries = {
@@ -186,12 +190,73 @@ def run_queries():
                 FROM daily_energy_consumption
                 WHERE Is_valid_day = 1
             """
+        },
+        "q9_year_on_year_monthly_change": {
+            "title": "Query 9: Year-on-Year Change in Monthly Consumption",
+            "sql": """
+                SELECT
+                    cur.Year AS year_num,
+                    cur.Month AS month_num,
+                    ROUND(cur.avg_daily_kwh, 2) AS avg_daily_kwh,
+                    ROUND(prev.avg_daily_kwh, 2) AS prev_year_avg_daily_kwh,
+                    ROUND((cur.avg_daily_kwh - prev.avg_daily_kwh) / prev.avg_daily_kwh * 100, 2) AS change_pct
+                FROM (
+                    SELECT Year, Month, AVG(Energy_kWh) AS avg_daily_kwh
+                    FROM daily_energy_consumption WHERE Is_valid_day = 1
+                    GROUP BY Year, Month
+                ) cur
+                JOIN (
+                    SELECT Year, Month, AVG(Energy_kWh) AS avg_daily_kwh
+                    FROM daily_energy_consumption WHERE Is_valid_day = 1
+                    GROUP BY Year, Month
+                ) prev
+                  ON cur.Year = prev.Year + 1 AND cur.Month = prev.Month
+                ORDER BY year_num, month_num
+            """
+        },
+        "q10_high_consumption_days_by_year": {
+            "title": "Query 10: Share of High-Consumption Days (above 40 kWh) per Year",
+            "sql": """
+                SELECT
+                    Year AS year_num,
+                    COUNT(*) AS valid_days,
+                    SUM(CASE WHEN Energy_kWh > 40 THEN 1 ELSE 0 END) AS high_days,
+                    ROUND(SUM(CASE WHEN Energy_kWh > 40 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) AS high_days_pct
+                FROM daily_energy_consumption
+                WHERE Is_valid_day = 1
+                GROUP BY Year
+                ORDER BY year_num
+            """
+        },
+        "q11_time_of_day_bands": {
+            "title": "Query 11: Consumption by Time-of-Day Band",
+            "sql": """
+                SELECT
+                    band,
+                    ROUND(SUM(Energy_kWh), 2) AS total_kwh,
+                    ROUND(AVG(Avg_power_kW), 4) AS avg_power_kw,
+                    ROUND(SUM(Energy_kWh) / SUM(SUM(Energy_kWh)) OVER () * 100, 2) AS share_pct
+                FROM (
+                    SELECT
+                        CASE
+                            WHEN Hour < 6 THEN '1 Night (00-05)'
+                            WHEN Hour < 12 THEN '2 Morning (06-11)'
+                            WHEN Hour < 18 THEN '3 Afternoon (12-17)'
+                            ELSE '4 Evening (18-23)'
+                        END AS band,
+                        Energy_kWh,
+                        Avg_power_kW
+                    FROM hourly_energy_consumption
+                ) t
+                GROUP BY band
+                ORDER BY band
+            """
         }
     }
 
-    report_md = ["# HiveQL Analytical Execution Report", "", "Generated using Apache Spark SQL engine running Hive-compatible SQL on genuine UCI Household Power Consumption records.", ""]
+    report_md = ["# HiveQL Analytical Execution Report", "", "Generated by the Apache Spark SQL engine running the HiveQL queries on the cleaned UCI Household Power Consumption tables. The same queries run on a real Apache Hive server with hive/run_hive_on_cluster.py.", ""]
 
-    print("[*] Executing all 8 analytical queries...")
+    print(f"[*] Executing all {len(queries)} analytical queries...")
     for q_id, q_info in queries.items():
         print(f"  -> Executing {q_info['title']}...")
         df_res = spark.sql(q_info["sql"])
@@ -217,7 +282,7 @@ def run_queries():
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(report_md))
 
-    print(f"[+] All 8 queries executed successfully! Report saved to: {report_path}")
+    print(f"[+] All {len(queries)} queries executed successfully! Report saved to: {report_path}")
 
     # Step: Mathematical Verification of Selected Queries against Pandas
     print("[*] Validating query outputs against independent Pandas references...")

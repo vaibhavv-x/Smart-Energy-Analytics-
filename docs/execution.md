@@ -1,136 +1,99 @@
 # Pipeline Execution & Demonstration Guide
 
 ## Smart Energy Consumption Analytics & Forecasting
-**Academic Batch**: 13  
-**Authors**: Praveen Sagar.M & Naveen.S
+**Batch**: 30  
+**Team**: Vaibhav (AP23110010425) & Saubhagya Kashyap (AP23110010439)
 
 ---
 
-## 1. Quick Start: Master Automated Runner
+## 1. Run everything
 
-To sequentially execute and verify all project phases in a single automated workflow:
-
-```powershell
-python scripts/run_pipeline.py
-```
-
-This single command triggers:
-1. Ingestion and data cleaning (`clean_data.py`)
-2. Hadoop MapReduce streaming aggregation and mathematical validation (`run_mapreduce.py`)
-3. HiveQL analytical query execution (`run_hive_analytics.py`)
-4. PySpark time-series feature engineering (`spark_feature_pipeline.py`)
-5. Spark MLlib forecasting model training and evaluation (`train_models.py`)
-6. Power BI star-schema export generation (`generate_dashboard_exports.py`)
-7. Publication figure rendering (`generate_plots.py`)
-8. Complete test suite verification (`pytest tests/ -v`)
-
----
-
-## 2. Step-by-Step Module Execution
-
-### Phase 1: Data Preprocessing & Validation
-Reads raw one-minute measurements (2,075,259 records), converts kW to kWh ($P \times 1/60$), converts Wh to kWh ($/1000$), computes unmetered remainder, tracks daily completeness, and outputs hourly/daily summaries:
-```powershell
-python preprocessing/clean_data.py --input-file data/raw/household_power_consumption.txt
-```
-*Outputs*:
-- `data/processed/daily_energy_consumption.csv` (1,433 rows)
-- `data/processed/hourly_energy_consumption.csv` (34,168 rows)
-- `data/processed/cleaning_summary.json`
-
-### Phase 2: Hadoop MapReduce Execution
-Executes the MapReduce streaming pipeline (Mapper $\rightarrow$ Partition/Sort $\rightarrow$ Reducer) and automatically compares the aggregated daily energy against an independent Pandas reference:
-```powershell
-python hadoop/run_mapreduce.py
-```
-*Outputs*:
-- `hadoop/mapreduce_daily_output.txt`
-- Console verification log demonstrating $< 0.0001$ kWh difference.
-
-For real Hadoop cluster / WSL submission:
 ```bash
-bash hadoop/run_hadoop_job.sh
+bash run_on_mac.sh
 ```
 
-### Phase 3: HiveQL Analytical Queries
-Executes all 8 HiveQL queries using Apache Spark's Hive-compatible SQL engine:
-```powershell
-python hive/run_hive_analytics.py
-```
-*Outputs*:
-- `hive/query_results/q1_daily_consumption.csv` ... `q8_submetering_breakdown.csv`
-- `hive/hive_execution_report.md`
+See [installation.md](installation.md) for what each stage installs. The sections below describe what each stage computes and how to run it alone. For the stand-alone commands, first set the environment as in section 4 of the installation guide.
 
-### Phase 4: PySpark Feature Engineering
-Builds leak-free chronological historical lags and rolling statistical windows using PySpark Windowing:
-```powershell
-python spark/spark_feature_pipeline.py
-```
-*Outputs*:
-- `data/features/daily_energy_features.csv` (1,413 complete chronological records, 18 features)
+## 2. Stages
 
-### Phase 5: Machine Learning Forecasting
-Trains and validates the Naive Baseline, Spark MLlib Linear Regression, and Spark MLlib Random Forest Regressor on strict chronological partitions:
-```powershell
-python forecasting/train_models.py
-```
-*Outputs*:
-- `forecasting/test_predictions.csv` (213 test days actual vs predicted)
-- `forecasting/evaluation_metrics.json`
+### Stage A: dataset into HDFS
 
-### Phase 6: Power BI Exports & Publication Figures
-Generates the Star-Schema CSV exports and renders publication-ready plots:
-```powershell
-python dashboard/generate_dashboard_exports.py
-python dashboard/generate_plots.py
-```
-*Outputs*:
-- `dashboard/power_bi_exports/*.csv` (5 tables)
-- `screenshots/01_energy_overview.png`
-- `screenshots/02_consumption_analysis.png`
-- `screenshots/03_forecasting_results.png`
-- `screenshots/04_sustainability_insights.png`
-
----
-
-## 3. Running Automated Tests
-
-Run the full automated test suite covering all 24 unit tests:
-```powershell
-python -m pytest tests -v
+```bash
+hdfs dfs -mkdir -p /smart-energy/raw
+hdfs dfs -put -f data/raw/household_power_consumption.txt /smart-energy/raw/
 ```
 
-Run specific test modules:
-```powershell
-pytest tests/test_preprocessing.py -v
-pytest tests/test_mapreduce.py -v
-pytest tests/test_features.py -v
-pytest tests/test_models.py -v
-pytest tests/test_dashboard_exports.py -v
+### Stage B: MapReduce on YARN (two Hadoop Streaming jobs)
+
+| Job | Scripts | Output in HDFS | Local copy |
+|---|---|---|---|
+| Daily energy totals | `hadoop/mapper.py`, `hadoop/reducer.py` | `/smart-energy/mapreduce/daily_consumption` | `hadoop/mapreduce_yarn_daily_output.txt` (1,433 rows) |
+| Hour-of-day load profile | `hadoop/mapper_hourly.py`, `hadoop/reducer_hourly.py` | `/smart-energy/mapreduce/hourly_profile` | `hadoop/mapreduce_yarn_hourly_output.txt` (24 rows) |
+
+Both read all 2,075,259 rows from HDFS. To test a mapper and reducer without Hadoop:
+
+```bash
+python3 hadoop/mapper_hourly.py < data/raw/household_power_consumption.txt | sort -k1,1 | python3 hadoop/reducer_hourly.py
 ```
 
----
+### Stage C: analysis pipeline
 
-## 4. Evaluation Demonstration Sequence for College Viva
+```bash
+export SMART_ENERGY_HDFS_URI=hdfs://localhost:9000/smart-energy
+export SMART_ENERGY_HDFS_BIN=$HADOOP_HOME/bin/hdfs
+~/bigdata/venv/bin/python scripts/run_pipeline.py
+```
 
-When presenting to academic evaluators, execute the demonstration in this sequence:
-1. **Show Environment Diagnostics**:
-   ```powershell
-   python scripts/verify_environment.py
+| Step | Script | What it does | Output |
+|---|---|---|---|
+| 1 | `preprocessing/clean_data.py` | Cleans the raw file; builds daily (1,433 rows) and hourly (34,168 rows) tables | `data/processed/` |
+| 1b | (in `run_pipeline.py`) | Uploads both tables to HDFS | `/smart-energy/cleaned/daily`, `/hourly` |
+| 2 | `hadoop/run_mapreduce.py` | Local mapper and reducer check on the 5,000-row sample | `hadoop/mapreduce_daily_output.txt` |
+| 3 | `hive/run_hive_analytics.py` | 11 HiveQL queries in Spark SQL, reading from HDFS | `hive/query_results/`, `hive/hive_execution_report.md` |
+| 4 | `spark/spark_feature_pipeline.py` | 15 leak-free features, reading from HDFS | `data/features/`, `/smart-energy/features` (Parquet) |
+| 5 | `forecasting/train_models.py` | Naive baseline, Linear Regression, Random Forest; reads features from HDFS | `forecasting/` |
+| 6 | `dashboard/generate_dashboard_exports.py` | Five star-schema CSV tables | `dashboard/power_bi_exports/` |
+| 7 | `dashboard/generate_plots.py` | Four report figures | `screenshots/` |
+| 8 | `pytest tests/` | 35 automated tests | terminal |
+
+Without `SMART_ENERGY_HDFS_URI`, steps 3 to 5 read the local CSV files and step 1b is skipped.
+
+### Stage D: Apache Hive
+
+```bash
+bash run_on_mac.sh hive
+```
+
+This starts HiveServer2 and runs `hive/run_hive_on_cluster.py`, which executes:
+
+1. `hive/schema.hql`: database `smart_energy_db`, an external table over the raw file, a daily ORC table partitioned by year, an hourly Parquet table.
+2. `hive/load_cleaned_tables.hql`: staging tables over the cleaned CSV files in HDFS and two `INSERT OVERWRITE` statements (dynamic partitioning).
+3. `hive/queries.hql`: 12 queries, each run separately through beeline.
+
+Results are saved as `hive/cluster_results/q01.csv` to `q12.csv`, with timings in `hive/hive_cluster_report.md`. Every aggregation runs as one or more MapReduce jobs on YARN, so the stage takes about 9 minutes.
+
+### Stage E: dashboard
+
+```bash
+bash run_on_mac.sh dashboard
+```
+
+## 3. Tests
+
+```bash
+~/bigdata/venv/bin/python -m pytest tests -v
+```
+
+## 4. Demonstration sequence for the viva
+
+1. `bash run_on_mac.sh status`: show the four Hadoop daemons and the files in HDFS.
+2. http://localhost:9870 → Utilities → Browse the file system → `/smart-energy`: the raw file, cleaned tables, features, MapReduce outputs and Hive warehouse.
+3. http://localhost:8088: the finished MapReduce jobs and the Hive query jobs.
+4. Open `hadoop/mapper_hourly.py` and `hadoop/reducer_hourly.py`, then `hadoop/mapreduce_yarn_hourly_output.txt`.
+5. Run one Hive query live:
+   ```bash
+   beeline -u jdbc:hive2://localhost:10000/smart_energy_db -n $USER -e "SELECT year_num, COUNT(*) FROM daily_energy_consumption GROUP BY year_num;"
    ```
-2. **Show Unit Test Pass Rate**:
-   ```powershell
-   pytest tests -v
-   ```
-   *(Demonstrates 24/24 tests passing with zero failures).*
-3. **Show MapReduce Mathematical Equivalence**:
-   ```powershell
-   python hadoop/run_mapreduce.py
-   ```
-   *(Demonstrates mapper, reducer, and $< 0.0001$ kWh agreement with independent reference).*
-4. **Show HiveQL Query Execution & Report**:
-   Display `hive/hive_execution_report.md` and query results in `hive/query_results/`.
-5. **Show Machine Learning Predictions & Evaluation Metrics**:
-   Display `forecasting/evaluation_metrics.json` and `forecasting/test_predictions.csv`.
-6. **Show Dashboard Visualizations**:
-   Open images in `screenshots/` and Power BI data model in `dashboard/dashboard_layout.md`.
+6. Open `hive/hive_cluster_report.md` for all 12 results.
+7. Open the dashboard; the "Hadoop & Hive Cluster Results" page shows the cluster outputs, and the forecasting page shows the model against the naive baseline.
+8. `~/bigdata/venv/bin/python -m pytest tests -q`: 35 tests pass.

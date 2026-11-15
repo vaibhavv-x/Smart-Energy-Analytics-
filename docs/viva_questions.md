@@ -2,8 +2,8 @@
 
 ## Smart Energy Consumption Analytics & Forecasting
 **Subject**: Big Data Analytics (BDA)  
-**Academic Batch**: 13  
-**Team Members**: Praveen Sagar.M (814724104117) & Naveen.S (814724104104)
+**Batch**: 30  
+**Team Members**: Vaibhav (AP23110010425) & Saubhagya Kashyap (AP23110010439)
 
 ---
 
@@ -34,8 +34,8 @@
 #### Q7. What is the role of Spark's Catalyst Optimizer and Tungsten Execution Engine?
 **Answer**: The **Catalyst Optimizer** automatically optimizes relational query trees through rule-based and cost-based optimizations (predicate pushdown, constant folding, projection pruning). The **Tungsten Engine** provides off-heap memory management and whole-stage code generation, compiling complex DataFrame query pipelines into optimized JVM bytecode to bypass Java object overhead.
 
-#### Q8. Why did PySpark MLlib execute seamlessly in native JVM mode on Windows?
-**Answer**: Spark MLlib's estimators (such as `LinearRegression` and `RandomForestRegressor`) and feature transformers (`VectorAssembler`) operate directly on JVM memory structures using native Scala/Java implementations without serializing records back and forth to external Python sub-processes, preventing socket crashes.
+#### Q8. Where does Spark read its data from in this project, and where does it run?
+**Answer**: Spark reads the cleaned daily and hourly tables from HDFS (`hdfs://localhost:9000/smart-energy/cleaned`) and writes the feature table back to HDFS as Parquet (`/smart-energy/features`); the MLlib training job reads that Parquet file. The Spark session itself runs in local mode on the same machine, not on YARN, because the cleaned tables are small (1,433 daily rows and 34,168 hourly rows).
 
 ---
 
@@ -79,7 +79,9 @@
 
 ---
 
-### 5. Power BI Dashboard & Business Intelligence
+### 5. Dashboard Data Model (Power BI design, Streamlit implementation)
+
+> The dashboard we run is the Streamlit app. The star-schema tables below are exported as CSV and were designed for Power BI; no Power BI report was built.
 
 #### Q17. What data modeling schema was adopted in Power BI, and why?
 **Answer**: A **Star Schema** was implemented. A centralized date dimension (`dim_calendar`) with a 1-to-many relationship filters three transactional fact tables (`fact_daily_energy`, `fact_hourly_energy`, `fact_forecast_comparison`). Star schemas optimize VertiPaq engine compression, maximize DAX query performance, and eliminate ambiguous circular relationship paths.
@@ -95,17 +97,43 @@
 **Answer**: UN SDG 7 focuses on "Affordable and Clean Energy," specifically Target 7.3 (doubling global energy efficiency). By analyzing diurnal demand patterns and forecasting next-day load, the system empowers grid operators and consumers to perform **demand-side peak shaving** and shift high-energy discretionary activities away from peak stress periods.
 
 #### Q20. What is Peak Shaving and Load Shifting, and what is its quantified impact?
-**Answer**: Our analytical findings demonstrate that household electricity demand peaks between 18:00 and 21:00 (averaging 2.12 kW) and drops to a valley between 01:00 and 05:00 (averaging 0.48 kW). Shifting 15% of flexible appliance loads to off-peak nocturnal hours reduces grid peak-to-average ratio (PAR) and produces estimated consumer bill savings of €280–€420 annually under variable time-of-use tariffs.
+**Answer**: Our analytical findings demonstrate that household electricity demand peaks between 18:00 and 21:00 (averaging 1.71 kW) and drops to a valley between 01:00 and 05:00 (averaging 0.47 kW). Shifting 15% of flexible appliance loads to off-peak nocturnal hours flattens the household's load curve. How much a household saves depends on its time-of-use tariff; this dataset has no tariff data, so no saving is quantified.
 
 #### Q21. How were consumption anomalies detected, and why are they relevant to energy waste?
-**Answer**: Anomalies were identified using a statistical threshold: days where consumption exceeded $\mu + 2\sigma$ ($48.2 \text{ kWh}$). Detecting these 49 historical anomaly days alerts consumers to malfunctioning appliances, equipment left on continuously, or insulation degradation.
+**Answer**: Anomalies were identified using a statistical threshold: days where consumption exceeded $\mu + 2\sigma$ ($46.2 \text{ kWh}$). Detecting these 49 historical anomaly days alerts consumers to malfunctioning appliances, equipment left on continuously, or insulation degradation.
 
 ---
 
 ### 7. Software Engineering & Verification
 
 #### Q22. How did you verify the mathematical correctness of your MapReduce implementation?
-**Answer**: We built an automated verification harness (`hadoop/run_mapreduce.py`) that executes the MapReduce streaming pipeline on real input data and independently computes vector sums using Pandas on the identical records. The maximum difference between MapReduce and the reference was less than $0.000033 \text{ kWh}$, verifying exact mathematical equivalence down to floating-point rounding limits.
+**Answer**: Two ways. `hadoop/run_mapreduce.py` runs the mapper and reducer on the 5,000-row sample and compares the result with an independent pandas calculation. On the cluster, `run_on_mac.sh` compares the daily totals produced by the YARN job over all 2,075,259 rows with the daily table produced by the cleaning step: all 1,433 days match, with a largest difference of 0.0001 kWh (rounding in the reducer's four-decimal output). `tests/test_cluster_outputs.py` repeats that check automatically.
 
 #### Q23. What automated tests were implemented, and how does the CI pipeline work?
-**Answer**: A 24-test suite was implemented using `pytest` spanning preprocessing unit conversions, MapReduce streaming boundary conditions, data leakage prevention, chronological splitting, model metric correctness, and Power BI export schema validity. A GitHub Actions workflow (`.github/workflows/ci.yml`) executes these tests automatically on push.
+**Answer**: A 35-test suite was implemented using `pytest` spanning preprocessing unit conversions, MapReduce streaming boundary conditions, data leakage prevention, chronological splitting, model metric correctness, and Power BI export schema validity. A GitHub Actions workflow (`.github/workflows/ci.yml`) executes these tests automatically on push.
+
+---
+
+### 8. Our Cluster Setup (Batch 30 additions)
+
+#### Q24. How is the Hadoop cluster set up, and what exactly runs on it?
+**Answer**: It is a single-node (pseudo-distributed) Hadoop 3.3.6 cluster on a MacBook: one NameNode and one DataNode for HDFS, and one ResourceManager and one NodeManager for YARN, with replication factor 1. Two Hadoop Streaming MapReduce jobs run on YARN over the full 2,075,259-row file: daily energy totals, and the hour-of-day load profile. The 12 HiveQL queries also run as MapReduce jobs on YARN through HiveServer2.
+
+#### Q25. What is your second MapReduce job, and what did it find?
+**Answer**: `mapper_hourly.py` keys every valid one-minute reading by its hour of day and emits the interval energy and the power; `reducer_hourly.py` returns total energy, reading count, average power and peak power for each of the 24 hours. It shows demand lowest around 03:00 to 04:00 (about 0.44 kW) and highest around 20:00 to 21:00 (about 1.9 kW).
+
+#### Q26. Is Hive really installed, or is it Spark SQL?
+**Answer**: Both exist. Apache Hive 4.0.1 is installed with HiveServer2 and an embedded Derby metastore. `hive/schema.hql` creates an external table over the raw file in HDFS, a daily table stored as ORC and partitioned by year, and an hourly table stored as Parquet. `hive/load_cleaned_tables.hql` loads them with dynamic partitioning, and `hive/run_hive_on_cluster.py` runs the 12 queries through beeline and saves the results in `hive/cluster_results/`. Separately, `hive/run_hive_analytics.py` runs the same analysis in Spark SQL; the two engines give the same numbers.
+
+#### Q27. Why does a Hive query on a small table take 20 to 90 seconds?
+**Answer**: Hive uses the MapReduce execution engine here. Every aggregation is compiled into one or more MapReduce jobs, and each job has to start an ApplicationMaster and task containers on YARN. That fixed start-up cost dominates on small tables. A query with a join and an ORDER BY (Query 9) needs several jobs in sequence. Tez or Spark as the engine would cut this sharply.
+
+#### Q28. Why did the Hive header row appear as NULL, and how did you fix it?
+**Answer**: The cleaned CSV files have a header line. The table property `skip.header.line.count` was not applied when Hive's MapReduce engine read the files, so the header was parsed as a row of NULLs. The load script now filters it out (`WHERE date_iso <> 'Date_ISO'`), and the raw-table query filters `record_date <> 'Date'`.
+
+#### Q29. What problem did you hit running Hive on Hadoop 3.3.6, and how was it solved?
+**Answer**: The first INSERT into the ORC table failed with `NoSuchMethodError: com.google.protobuf.Internal.checkNotNull`. Hadoop ships protobuf 2.5 while Hive's ORC writer needs protobuf 3, and the Hadoop jar came first on the task classpath. Setting `mapreduce.job.user.classpath.first=true` in `hive-site.xml` puts the job's own jars first and fixes it.
+
+#### Q30. Is 2 million rows really big data?
+**Answer**: No. At 126.8 MB the file fits in one HDFS block. The project demonstrates the full workflow (distributed storage, batch jobs on YARN, a Hive warehouse, Spark features and MLlib models) on a real public dataset, and the same code would run unchanged on a multi-node cluster with a larger file.
+

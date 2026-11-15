@@ -1,0 +1,77 @@
+2026-11-15 18:17:30,862 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+packageJobJar: [/var/folders/2c/hxycft992xd_2g2txvbht5rr0000gq/T/hadoop-unjar17994042976730543862/] [] /var/folders/2c/hxycft992xd_2g2txvbht5rr0000gq/T/streamjob7463235433519198404.jar tmpDir=null
+2026-11-15 18:17:31,359 INFO client.DefaultNoHARMFailoverProxyProvider: Connecting to ResourceManager at localhost/127.0.0.1:8032
+2026-11-15 18:17:31,476 INFO client.DefaultNoHARMFailoverProxyProvider: Connecting to ResourceManager at localhost/127.0.0.1:8032
+2026-11-15 18:17:31,638 INFO mapreduce.JobResourceUploader: Disabling Erasure Coding for path: /tmp/hadoop-yarn/staging/tanishchhabra/.staging/job_1794746812898_0001
+2026-11-15 18:17:31,938 INFO mapred.FileInputFormat: Total input files to process : 1
+2026-11-15 18:17:32,013 INFO mapreduce.JobSubmitter: number of splits:2
+2026-11-15 18:17:32,157 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1794746812898_0001
+2026-11-15 18:17:32,157 INFO mapreduce.JobSubmitter: Executing with tokens: []
+2026-11-15 18:17:32,252 INFO conf.Configuration: resource-types.xml not found
+2026-11-15 18:17:32,253 INFO resource.ResourceUtils: Unable to find 'resource-types.xml'.
+2026-11-15 18:17:32,594 INFO impl.YarnClientImpl: Submitted application application_1794746812898_0001
+2026-11-15 18:17:32,614 INFO mapreduce.Job: The url to track the job: http://localhost:8088/proxy/application_1794746812898_0001/
+2026-11-15 18:17:32,614 INFO mapreduce.Job: Running job: job_1794746812898_0001
+2026-11-15 18:17:38,753 INFO mapreduce.Job: Job job_1794746812898_0001 running in uber mode : false
+2026-11-15 18:17:38,755 INFO mapreduce.Job:  map 0% reduce 0%
+2026-11-15 18:17:46,986 INFO mapreduce.Job:  map 100% reduce 0%
+2026-11-15 18:17:53,037 INFO mapreduce.Job:  map 100% reduce 100%
+2026-11-15 18:17:54,056 INFO mapreduce.Job: Job job_1794746812898_0001 completed successfully
+2026-11-15 18:17:54,115 INFO mapreduce.Job: Counters: 50
+	File System Counters
+		FILE: Number of bytes read=47025632
+		FILE: Number of bytes written=94892484
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=132965095
+		HDFS: Number of bytes written=32780
+		HDFS: Number of read operations=11
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=2
+		HDFS: Number of bytes read erasure-coded=0
+	Job Counters 
+		Launched map tasks=2
+		Launched reduce tasks=1
+		Data-local map tasks=2
+		Total time spent by all maps in occupied slots (ms)=21240
+		Total time spent by all reduces in occupied slots (ms)=6354
+		Total time spent by all map tasks (ms)=10620
+		Total time spent by all reduce tasks (ms)=3177
+		Total vcore-milliseconds taken by all map tasks=10620
+		Total vcore-milliseconds taken by all reduce tasks=3177
+		Total megabyte-milliseconds taken by all map tasks=5437440
+		Total megabyte-milliseconds taken by all reduce tasks=1626624
+	Map-Reduce Framework
+		Map input records=2075260
+		Map output records=2049280
+		Map output bytes=42927066
+		Map output materialized bytes=47025638
+		Input split bytes=244
+		Combine input records=0
+		Combine output records=0
+		Reduce input groups=1433
+		Reduce shuffle bytes=47025638
+		Reduce input records=2049280
+		Reduce output records=1433
+		Spilled Records=4098560
+		Shuffled Maps =2
+		Failed Shuffles=0
+		Merged Map outputs=2
+		GC time elapsed (ms)=39
+		CPU time spent (ms)=0
+		Physical memory (bytes) snapshot=0
+		Virtual memory (bytes) snapshot=0
+		Total committed heap usage (bytes)=614465536
+	Shuffle Errors
+		BAD_ID=0
+		CONNECTION=0
+		IO_ERROR=0
+		WRONG_LENGTH=0
+		WRONG_MAP=0
+		WRONG_REDUCE=0
+	File Input Format Counters 
+		Bytes Read=132964851
+	File Output Format Counters 
+		Bytes Written=32780
+2026-11-15 18:17:54,115 INFO streaming.StreamJob: Output directory: /smart-energy/mapreduce/daily_consumption

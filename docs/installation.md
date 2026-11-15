@@ -1,116 +1,104 @@
-# Installation & Environment Configuration Guide
+# Installation Guide (macOS)
 
 ## Smart Energy Consumption Analytics & Forecasting
-**Target Platforms**: Windows 11 / WSL2 (Ubuntu 22.04 LTS)  
-**System Constraints**: 8 GB RAM, Sequential Execution Architecture
+**Batch**: 30  
+**Team**: Vaibhav (AP23110010425) & Saubhagya Kashyap (AP23110010439)
 
 ---
 
-## 1. System Requirements & Prerequisites
+## 1. What you need
 
-| Component | Minimum Specification | Recommended Specification | Configured Environment |
-|---|---|---|---|
-| Operating System | Windows 10/11 (64-bit) or Ubuntu 20.04+ | Windows 11 64-bit | Windows 11 Pro |
-| Processor | 4 Cores | 8 Cores (Intel i5-1335U) | 10 Cores (Intel Core i5-1335U) |
-| RAM | 8 GB | 16 GB | 8 GB (Sequential execution optimized) |
-| Disk Storage | 5 GB free disk space | 20 GB SSD | 150+ GB SSD available |
-| Java Runtime | OpenJDK 11 | OpenJDK 17 LTS | Microsoft OpenJDK 17.0.14 LTS |
-| Python | Python 3.9 – 3.12 | Python 3.11 / 3.12 | Python 3.13.9 (Anaconda3) |
-| Big Data Stack | PySpark 3.5+ | PySpark 4.0+ & Hadoop 3.3+ | PySpark 4.0.1 & Hadoop Winutils 3.3.6 |
+- A Mac (Apple Silicon or Intel) with macOS 12 or later, 8 GB of RAM and about 5 GB of free disk space.
+- `python3` version 3.9 or newer. Check with `python3 --version`; if it is missing, run `xcode-select --install`.
+- An internet connection for the first run (about 1.3 GB of downloads).
 
----
+You do not need sudo, Homebrew or Docker. Nothing is installed system-wide.
 
-## 2. Windows Native Environment Setup
+## 2. One-command setup
 
-### Step 1: Clone Repository
-```powershell
-git clone https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting.git
-cd Smart-Energy-Analytics-Forecasting
-```
-
-### Step 2: Configure Python Dependencies
-Install required packages using Anaconda or standard pip:
-```powershell
-pip install -r requirements.txt
-```
-
-Verify installed packages:
-```powershell
-python -c "import pandas, numpy, sklearn, matplotlib, seaborn, pyspark, pytest; print('Dependencies verified!')"
-```
-
-### Step 3: Install Java Development Kit (OpenJDK 17 LTS)
-PySpark and Hadoop require a 64-bit Java Runtime Environment:
-1. Download Microsoft OpenJDK 17 zip:
-   ```powershell
-   # Automated extraction into user directory
-   Invoke-WebRequest -Uri "https://aka.ms/download-jdk/microsoft-jdk-17.0.14-windows-x64.zip" -OutFile "$HOME\jdk-17.zip"
-   Expand-Archive -Path "$HOME\jdk-17.zip" -DestinationPath "$HOME\jdk-17"
-   ```
-2. Configure Environment Variables:
-   ```powershell
-   [System.Environment]::SetEnvironmentVariable("JAVA_HOME", "$HOME\jdk-17\jdk-17.0.14+7", "User")
-   $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-   ```
-3. Verify Java installation:
-   ```powershell
-   java -version
-   ```
-
-### Step 4: Configure Windows Native Hadoop Binaries (Winutils)
-Native Windows execution of Spark/Hadoop requires `winutils.exe` and `hadoop.dll`:
-```powershell
-New-Item -ItemType Directory -Force -Path "C:\hadoop\bin"
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/cdarlint/winutils/master/hadoop-3.3.6/bin/winutils.exe" -OutFile "C:\hadoop\bin\winutils.exe"
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/cdarlint/winutils/master/hadoop-3.3.6/bin/hadoop.dll" -OutFile "C:\hadoop\bin\hadoop.dll"
-
-# Set HADOOP_HOME
-[System.Environment]::SetEnvironmentVariable("HADOOP_HOME", "C:\hadoop", "User")
-$env:PATH = "C:\hadoop\bin;$env:PATH"
-```
-
----
-
-## 3. WSL2 / Linux Hadoop Single-Node Setup (Optional for Multi-Node Cluster)
-
-For academic lab setups running a complete native Linux Hadoop ecosystem:
+From the project folder:
 
 ```bash
-# 1. Update and install Java
-sudo apt-get update
-sudo apt-get install -y openjdk-17-jdk ssh pdsh
-
-# 2. Download and configure Apache Hadoop 3.3.6
-wget https://downloads.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
-sudo tar -xzf hadoop-3.3.6.tar.gz -C /usr/local/
-sudo mv /usr/local/hadoop-3.3.6 /usr/local/hadoop
-
-# 3. Configure ~/.bashrc
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-export HADOOP_HOME=/usr/local/hadoop
-export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
-source ~/.bashrc
-
-# 4. Format and Start HDFS
-hdfs namenode -format
-start-dfs.sh
-start-yarn.sh
-
-# 5. Verify Active Daemons
-jps
-# Should list: NameNode, DataNode, SecondaryNameNode, ResourceManager, NodeManager
+bash run_on_mac.sh
 ```
 
----
+The script installs and runs everything in ten stages. A finished stage is skipped on the next run, so it is safe to run again after an error or a dropped download.
 
-## 4. Verification Check
+| Stage | What it does | Where it goes |
+|---|---|---|
+| 1. Java 11 | Downloads Temurin JDK 11 (about 190 MB) | `~/bigdata/jdk-11*` |
+| 2. Hadoop | Downloads Hadoop 3.3.6 (about 700 MB) and writes the single-node configuration | `~/bigdata/hadoop-3.3.6` |
+| 3. Dataset | Downloads the UCI file (20 MB zipped, 126.8 MB unpacked) | `data/raw/household_power_consumption.txt` |
+| 4. Python | Creates a virtual environment with the packages in `requirements.txt` and PySpark 3.5.3 | `~/bigdata/venv` |
+| 5. Cluster | Formats HDFS on the first run; starts NameNode, DataNode, ResourceManager, NodeManager | `~/bigdata/hadoop_data` |
+| 6. HDFS | Creates `/smart-energy` and uploads the dataset | HDFS |
+| 7. MapReduce | Runs two Hadoop Streaming jobs on YARN | `hadoop/mapreduce_yarn_*.txt` |
+| 8. Pipeline | Cleaning, upload of cleaned tables to HDFS, Spark SQL, PySpark features, MLlib, exports, tests | `data/`, `hive/query_results/`, `forecasting/`, `screenshots/` |
+| 9. Check | Compares the MapReduce daily totals with the pipeline's daily table | terminal |
+| 10. Hive | Downloads Hive 4.0.1 (about 390 MB), starts HiveServer2, loads the tables, runs 12 queries | `~/bigdata/apache-hive-4.0.1-bin`, `hive/cluster_results/` |
 
-Run the automated diagnostic tool to verify all tooling:
-```powershell
-python scripts/verify_environment.py
+The first run takes 20 to 40 minutes, mostly downloads. Later runs take about 12 minutes, of which Hive is about 9.
+
+## 3. Other commands
+
+```bash
+bash run_on_mac.sh status     # running daemons and HDFS contents
+bash run_on_mac.sh hive       # run only the Hive stage again
+bash run_on_mac.sh dashboard  # open the Streamlit dashboard at http://localhost:8501
+bash run_on_mac.sh stop       # stop HiveServer2 and Hadoop
 ```
-Expected output:
-- `OS Platform`: Windows 11
-- `Java Version`: openjdk version "17.0.14" [FOUND]
-- `Winutils Binary`: C:\hadoop\bin\winutils.exe [FOUND]
-- `PySpark Library`: v4.0.1 [INSTALLED]
+
+Web pages while the cluster is running:
+
+| Page | Address |
+|---|---|
+| HDFS NameNode | http://localhost:9870 |
+| YARN ResourceManager | http://localhost:8088 |
+| HiveServer2 | http://localhost:10002 |
+| Dashboard | http://localhost:8501 |
+
+## 4. Running one script by hand
+
+The Spark scripts need Java 11 and the project's Python environment:
+
+```bash
+export JAVA_HOME=$(ls -d ~/bigdata/jdk-11*/Contents/Home)
+export SMART_ENERGY_HDFS_URI=hdfs://localhost:9000/smart-energy   # leave unset to read local CSV files
+~/bigdata/venv/bin/python hive/run_hive_analytics.py
+```
+
+To use `hdfs`, `yarn` or `beeline` directly:
+
+```bash
+export JAVA_HOME=$(ls -d ~/bigdata/jdk-11*/Contents/Home)
+export HADOOP_HOME=~/bigdata/hadoop-3.3.6
+export HIVE_HOME=~/bigdata/apache-hive-4.0.1-bin
+export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HIVE_HOME/bin:$PATH
+
+hdfs dfs -ls -R /smart-energy
+beeline -u jdbc:hive2://localhost:10000/smart_energy_db -n $USER
+```
+
+## 5. Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| A download stops or the script says "download failed" | Run `bash run_on_mac.sh` again; downloads resume where they stopped. |
+| `[STOP] ... did not start` for a Hadoop daemon | The script prints the daemon's log. Usually a port is in use by an old daemon: run `bash run_on_mac.sh stop`, then start again. |
+| Spark fails with an unsupported Java version | The Mac's default Java is newer than Spark supports. Set `JAVA_HOME` as in section 4. |
+| Hive INSERT fails with `NoSuchMethodError ... protobuf` | `mapreduce.job.user.classpath.first` must be `true` in `hive-site.xml`. The script writes this; re-run `bash run_on_mac.sh hive`. |
+| The Mac becomes slow | Hadoop, HiveServer2 and Spark together use most of 8 GB. Close other apps, and run `bash run_on_mac.sh stop` when finished. |
+| `python scripts/run_pipeline.py` produced three days of data | The full dataset was missing, so the sample was used. Restore with `git checkout -- data forecasting hive dashboard screenshots` and run `bash run_on_mac.sh`. |
+
+## 6. Removing everything
+
+```bash
+bash run_on_mac.sh stop
+rm -rf ~/bigdata
+```
+
+This deletes Java 11, Hadoop, Hive, the Python environment and all HDFS data. The project folder is not touched.
+
+## 7. Other platforms
+
+The pipeline itself (`scripts/run_pipeline.py`) runs on Linux and Windows with Python 3.9 or newer, Java 11 or 17 and `pip install -r requirements.txt`. The cluster setup in `run_on_mac.sh` is written for macOS; on Linux the same steps work with a Linux JDK.

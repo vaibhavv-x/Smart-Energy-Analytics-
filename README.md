@@ -1,58 +1,47 @@
 # Smart Energy Consumption Analytics & Forecasting
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://smart-energy-analytics-forecast.streamlit.app/)
-[![CI Pipeline](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Apache Spark](https://img.shields.io/badge/Apache%20Spark-4.0%20%7C%20MLlib-orange.svg)](https://spark.apache.org/)
+[![Apache Spark](https://img.shields.io/badge/Apache%20Spark-3.5%20%7C%20MLlib-orange.svg)](https://spark.apache.org/)
 [![Hadoop](https://img.shields.io/badge/Apache%20Hadoop-3.3%20%7C%20HDFS%20%7C%20MapReduce-yellow.svg)](https://hadoop.apache.org/)
 [![UN SDG 7](https://img.shields.io/badge/UN%20SDG-Goal%207%3A%20Affordable%20%26%20Clean%20Energy-green.svg)](https://sdgs.un.org/goals/goal7)
 
 ---
 
-## 🌐 Interactive Streamlit Web Application
+## Project Team
 
-This project includes a production-ready, interactive web dashboard deployed on **Streamlit Community Cloud**:
+| Student Name | Roll Number | Batch |
+|---|---|---|
+| **Vaibhav** | **AP23110010425** | **Batch 30** |
+| **Saubhagya Kashyap** | **AP23110010439** | **Batch 30** |
 
-- **Live Cloud Dashboard URL:** [https://smart-energy-analytics-forecast.streamlit.app/](https://smart-energy-analytics-forecast.streamlit.app/)
-- **Local Execution:**
-  ```powershell
-  streamlit run app.py
-  ```
-- **Streamlit Community Cloud Configuration:**
-  - **Repository:** `Praveensagar07/Smart-Energy-Analytics-Forecasting`
-  - **Branch:** `main`
-  - **Main file path:** `app.py`
-  - **Live URL:** [https://smart-energy-analytics-forecast.streamlit.app/](https://smart-energy-analytics-forecast.streamlit.app/)
+- **Course**: Big Data
+- **Target Sustainable Development Goal**: **UN SDG 7 — Affordable and Clean Energy**
+- **Based on**: [Praveensagar07/Smart-Energy-Analytics-Forecasting](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting) by Praveen Sagar M and Naveen S, used under the MIT licence (see [LICENSE](LICENSE)). The analysis pipeline, dashboard and documentation come from that project.
+- **Our additions**: single-node Hadoop setup for macOS and a full-dataset MapReduce run on YARN ([run_on_mac.sh](run_on_mac.sh)). See [FEATURES.md](FEATURES.md) and [TODO.md](TODO.md).
 
----
+## Run it on a Mac
 
-## Academic & Student Details
-
-| Student Name | Register Number | Degree & Department | Academic Batch |
-|---|---|---|---|
-| **Praveen Sagar.M** | **814724104117** | B.E. Computer Science & Engineering | **Batch 13** |
-| **Naveen.S** | **814724104104** | B.E. Computer Science & Engineering | **Batch 13** |
-
-- **Subject**: Big Data Analytics (BDA)
-- **Target Sustainable Development Goal**: **UN SDG 7 — Affordable and Clean Energy (Level L3)**
-- **Live Deployed Dashboard**: [https://smart-energy-analytics-forecast.streamlit.app/](https://smart-energy-analytics-forecast.streamlit.app/)
-- **GitHub Repository**: [https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting)
+```bash
+bash run_on_mac.sh            # install everything, start Hadoop, run the whole pipeline
+bash run_on_mac.sh dashboard  # open the Streamlit dashboard
+bash run_on_mac.sh stop       # stop Hadoop
+```
 
 ---
 
 ## 1. Project Overview
 
-**Smart Energy Consumption Analytics & Forecasting** is an enterprise-grade Big Data Analytics and Machine Learning engineering project. It processes over **2.075 million high-frequency electrical smart meter records** spanning 47 continuous months (December 2006 – November 2010).
+**Smart Energy Consumption Analytics & Forecasting** is a Big Data analytics and machine learning course project. It processes over **2.075 million high-frequency electrical smart meter records** spanning 47 continuous months (December 2006 – November 2010).
 
 The system integrates:
 1. **Physical Preprocessing & Unit Conversions**: Translates instantaneous active power (kW) into interval energy (kWh), normalizes sub-metering Watt-hours, tracks daily completeness, and eliminates sensor noise without synthetic interpolation.
-2. **Distributed Big Data Storage & Ingestion (HDFS)**: Hierarchical project layout (`/smart-energy/raw`, `/cleaned`, `/mapreduce`, `/hive`).
-3. **Distributed Batch Aggregation (Hadoop MapReduce)**: Hadoop Streaming with Python Mapper and Reducer scripts, verified mathematically against independent reference calculations ($< 0.0001$ kWh difference).
-4. **Structured SQL Big Data Analytics (Apache HiveQL)**: 8 multi-dimensional analytical queries assessing diurnal variation, peak demand hours, weekday vs. weekend patterns, seasonal trends, and sub-metering distributions.
+2. **Distributed Storage (HDFS)**: A single-node Hadoop cluster holds the raw file, the cleaned tables, the feature table, the MapReduce outputs and the Hive warehouse under `/smart-energy`.
+3. **Batch Aggregation (Hadoop MapReduce on YARN)**: Two Hadoop Streaming jobs over the full dataset: daily energy totals (matching the pipeline's table within 0.0001 kWh on all 1,433 days) and the hour-of-day load profile.
+4. **Data Warehouse (Apache Hive)**: Hive 4.0.1 with HiveServer2; ORC and Parquet tables loaded from HDFS; 12 HiveQL queries run as MapReduce jobs on YARN and cross-checked in Spark SQL, assessing diurnal variation, peak demand hours, weekday vs. weekend patterns, seasonal trends, and sub-metering distributions.
 5. **Causal Time-Series Feature Engineering (Apache Spark)**: PySpark SQL Windowing generating 15 historical lags and preceding rolling statistics strictly isolated from forward data leakage.
 6. **Supervised Next-Day Forecasting (Apache Spark MLlib)**: Non-shuffled chronological evaluation comparing a Naive Persistence Baseline against ElasticNet Linear Regression and Random Forest Regression.
-7. **Interactive Decision Support (Microsoft Power BI & Matplotlib)**: Star-schema data models and publication-quality visual dashboards supporting UN SDG 7 demand-side load shifting and peak shaving.
+7. **Interactive Decision Support (Streamlit & Matplotlib)**: A six-page Streamlit dashboard, four report figures and star-schema CSV exports supporting UN SDG 7 demand-side load shifting and peak shaving.
 
 ---
 
@@ -69,9 +58,9 @@ Modern electrical smart meters generate continuous high-frequency telemetry at 1
 ## 3. Sustainable Development Goal (SDG 7 Alignment)
 
 This project directly advances **UN Sustainable Development Goal 7: Affordable and Clean Energy (Level 3 Impact)**:
-- **Target 7.3 (Double the global rate of improvement in energy efficiency)**: By analyzing diurnal consumption curves, the project identifies an intensive residential peak between **18:00 and 21:00** (averaging 2.12 kW) and an off-peak nocturnal valley between **01:00 and 05:00** (averaging 0.48 kW).
-- **Demand-Side Peak Shaving**: Shifting 15% of discretionary appliance load (dishwashing, laundry, water heating) to nocturnal off-peak hours flattens grid peak-to-average ratio (PAR) and saves consumers **€280 – €420 annually** under time-of-use tariffs.
-- **Statistical Anomaly Waste Detection**: Automated flagging of anomalous consumption days ($> \mu + 2\sigma = 48.2 \text{ kWh}$) alerts consumers to malfunctioning appliances, insulation degradation, or parasitic phantom loads.
+- **Target 7.3 (Double the global rate of improvement in energy efficiency)**: By analyzing diurnal consumption curves, the project identifies an intensive residential peak between **18:00 and 21:00** (averaging 1.71 kW) and an off-peak nocturnal valley between **01:00 and 05:00** (averaging 0.47 kW).
+- **Demand-Side Peak Shaving**: Shifting 15% of discretionary appliance load (dishwashing, laundry, water heating) to nocturnal off-peak hours flattens the household's load curve. How much a household saves depends on its time-of-use tariff; this dataset has no tariff data, so no saving is quantified.
+- **Statistical Anomaly Waste Detection**: Automated flagging of anomalous consumption days ($> \mu + 2\sigma = 46.2 \text{ kWh}$) alerts consumers to malfunctioning appliances, insulation degradation, or parasitic phantom loads.
 
 ---
 
@@ -100,14 +89,15 @@ This project directly advances **UN Sustainable Development Goal 7: Affordable a
 | Technology | Role & Implementation in Project |
 |---|---|
 | **Python 3.11+** | Core programming language for data engineering, automation scripts, and unit testing. |
-| **Apache Hadoop (HDFS)** | Distributed storage architecture and directory hierarchies for raw and aggregated datasets. |
-| **Hadoop MapReduce** | Hadoop Streaming mapper and reducer jobs for parallel daily energy aggregation. |
-| **Apache Hive / HiveQL** | Distributed data warehousing DDL schemas and 8 multi-dimensional SQL analytical queries. |
-| **Apache Spark (PySpark)** | In-memory distributed data processing and causal time-series windowing feature pipeline. |
+| **Apache Hadoop 3.3.6 (HDFS, YARN)** | Single-node cluster storing the raw file, cleaned tables, features and Hive warehouse. |
+| **Hadoop MapReduce** | Two Hadoop Streaming jobs on YARN: daily energy totals and hour-of-day load profile. |
+| **Apache Hive 4.0.1** | HiveServer2 with ORC and Parquet tables; 12 HiveQL queries executed as MapReduce jobs on YARN. |
+| **Apache Spark 3.5.3 (PySpark, Spark SQL)** | Reads the cleaned tables from HDFS; window-function feature pipeline; SQL cross-check of the Hive results. |
 | **Spark MLlib** | Distributed machine learning estimators (`LinearRegression`, `RandomForestRegressor`, `VectorAssembler`). |
-| **Microsoft Power BI** | Star-schema business intelligence reports, KPI scorecards, and interactive visual analytics. |
+| **Streamlit & Plotly** | Six-page interactive dashboard (`app.py`). |
+| **Dashboard export tables** | Five star-schema CSV tables that can be loaded into Power BI or Tableau. |
 | **Matplotlib & Seaborn** | Publication-quality preview figure generation and empirical evaluation charts. |
-| **Pytest** | Automated unit testing framework (24 passing test cases). |
+| **Pytest** | Automated unit testing framework (35 test cases). |
 
 ---
 
@@ -115,31 +105,42 @@ This project directly advances **UN Sustainable Development Goal 7: Affordable a
 
 ```mermaid
 flowchart TD
-    subgraph Ingestion["1. Data Ingestion & Quality Layer"]
-        RAW["UCI Raw Dataset<br/>(2,075,259 one-minute rows)"] --> CLEAN["Preprocessing Pipeline<br/>(preprocessing/clean_data.py)"]
-        CLEAN --> PARSED["Cleaned Daily & Hourly Aggregates<br/>(daily & hourly CSV)"]
-    end
+    RAW["UCI raw file<br/>2,075,259 one-minute readings"] --> HDFSRAW["HDFS /smart-energy/raw"]
 
-    subgraph Storage["2. Distributed HDFS Storage Layer"]
-        PARSED --> HDFS["HDFS Directory Structure<br/>/smart-energy/raw<br/>/smart-energy/mapreduce<br/>/smart-energy/hive"]
+    subgraph Batch["Hadoop MapReduce on YARN"]
+        MR1["Job 1: daily energy totals<br/>mapper.py, reducer.py"]
+        MR2["Job 2: hour-of-day load profile<br/>mapper_hourly.py, reducer_hourly.py"]
     end
+    HDFSRAW --> MR1
+    HDFSRAW --> MR2
 
-    subgraph BatchSQL["3. Batch MapReduce & Hive SQL Layer"]
-        HDFS --> MR["Hadoop MapReduce Streaming<br/>Mapper: kW -> kWh<br/>Reducer: Daily Summation"]
-        HDFS --> HIVE["HiveQL Analytical Engine<br/>8 Dimensional SQL Queries<br/>ORC External & Managed Tables"]
-    end
+    RAW --> CLEAN["Cleaning and aggregation<br/>clean_data.py"]
+    CLEAN --> HDFSCLEAN["HDFS /smart-energy/cleaned<br/>daily and hourly tables"]
 
-    subgraph FeatureML["4. PySpark & Spark MLlib Layer"]
-        PARSED --> SPARK_FEAT["PySpark Feature Pipeline<br/>Lagged Features (1, 2, 7 days)<br/>Preceding Rolling Stats (7D, 14D)<br/>Zero Forward Leakage"]
-        SPARK_FEAT --> SPLIT["Chronological Slicing<br/>Train: 70% | Val: 15% | Test: 15%"]
-        SPLIT --> ML["Spark MLlib Modeling<br/>1. Naive Persistence Baseline<br/>2. Regularized Linear Regression<br/>3. Random Forest Regressor"]
+    subgraph Warehouse["Apache Hive (HiveServer2, MapReduce engine)"]
+        HRAW["External table over the raw file"]
+        HTAB["daily table: ORC, partitioned by year<br/>hourly table: Parquet"]
+        HQ["12 HiveQL queries"]
+        HRAW --> HQ
+        HTAB --> HQ
     end
+    HDFSRAW --> HRAW
+    HDFSCLEAN --> HTAB
 
-    subgraph Serving["5. Power BI Serving & Sustainability Layer"]
-        ML --> PBI["Power BI Star Schema Exports<br/>dim_calendar, fact_daily, fact_hourly<br/>fact_forecast, dim_model_performance"]
-        HIVE --> PBI
-        PBI --> DASH["Power BI Desktop & Plots<br/>Energy Overview | Consumption Analysis<br/>Forecasting | SDG 7 Sustainability"]
+    subgraph SparkML["Apache Spark"]
+        SQL["Spark SQL: same analysis, cross-check"]
+        FEAT["PySpark window features<br/>lags and preceding rolling statistics"]
+        HDFSFEAT["HDFS /smart-energy/features (Parquet)"]
+        ML["Spark MLlib<br/>naive baseline, Linear Regression, Random Forest"]
+        FEAT --> HDFSFEAT --> ML
     end
+    HDFSCLEAN --> SQL
+    HDFSCLEAN --> FEAT
+
+    MR1 --> DASH["Streamlit dashboard and Matplotlib figures"]
+    MR2 --> DASH
+    HQ --> DASH
+    ML --> DASH
 ```
 
 ---
@@ -150,14 +151,15 @@ flowchart TD
 |---|---|---|
 | **Raw Dataset Ingestion** | **PASS** | 2,075,259 records inspected; 25,979 missing (`?`) rows flagged; 0 duplicate timestamps. |
 | **Preprocessing & Normalization** | **PASS** | Physical unit conversions ($P \times 1/60$ for kW to kWh, $/1000$ for Wh to kWh); completeness tracking. |
-| **HDFS Storage** | **IMPLEMENTED** | Complete directory layout and upload/listing shell scripts (`hadoop/hdfs_setup.sh`). |
-| **Hadoop MapReduce** | **PASS** | Streaming mapper and reducer executed; mathematically verified ($< 0.0001$ kWh difference). |
-| **HiveQL Analytics** | **PASS** | All 8 analytical queries executed via Spark SQL; query results and report generated. |
-| **PySpark Feature Engineering** | **PASS** | Causal backwards windowing; 15 lag and rolling features generated; 1,413 complete rows. |
+| **HDFS Storage** | **PASS** | Single-node cluster; raw file (126.8 MB), cleaned tables, features and Hive warehouse stored under `/smart-energy`. |
+| **Hadoop MapReduce** | **PASS** | Two Streaming jobs run on YARN over 2,075,259 rows; daily totals match the pipeline table within 0.0001 kWh. |
+| **Apache Hive** | **PASS** | 12 queries executed on HiveServer2 (MapReduce engine on YARN); results in `hive/cluster_results/`. |
+| **Spark SQL cross-check** | **PASS** | 11 of the queries re-run in Spark SQL from HDFS; results in `hive/query_results/`. |
+| **PySpark Feature Engineering** | **PASS** | Reads from HDFS; causal backwards windowing; 15 lag and rolling features generated; 1,413 complete rows. |
 | **Machine Learning Forecasting** | **PASS** | Spark MLlib Naive Baseline, Linear Regression, and Random Forest trained and evaluated chronologically. |
 | **Power BI Dashboard Exports** | **PASS** | 5 clean Star-Schema CSV exports generated in `dashboard/power_bi_exports/`. |
 | **Publication Visualizations** | **PASS** | 4 publication-quality figures rendered in `screenshots/` using actual data. |
-| **Automated Testing Suite** | **PASS** | **24 / 24 pytest tests passing** (100% pass rate in 1.17s). |
+| **Automated Testing Suite** | **PASS** | **35 / 35 pytest tests passing**. |
 
 ---
 
@@ -169,23 +171,60 @@ Models were evaluated on a **strict chronological held-out test period** (April 
 |---|---|---|---|---|---|---|
 | **Naive Baseline** | Persistence ($y_{t-1}$) | 4.4998 | 6.4155 | 0.2024 | 19.20% | 8.4182 |
 | **Linear Regression** | Spark MLlib ElasticNet | 3.9607 | 5.3711 | 0.4409 | 18.21% | 6.2883 |
-| **Random Forest Regressor** | Spark MLlib (40 trees, depth 5) | **3.8297** | **5.1623** | **0.4836** | **18.13%** | **6.0823** |
+| **Random Forest Regressor** | Spark MLlib (40 trees, depth 5) | **3.8203** | **5.1588** | **0.4843** | **18.19%** | **6.1262** |
 
 ### Key Results Summary:
-- **Best Model**: **Random Forest Regressor** achieved the lowest test RMSE (**5.1623 kWh**) and the highest $R^2$ (**0.4836**).
-- **Baseline Improvement**: Random Forest reduced Test RMSE by **19.53%** and MAE by **14.89%** compared to the Naive Persistence baseline.
+- **Best Model**: **Random Forest Regressor** achieved the lowest test RMSE (**5.1588 kWh**) and the highest $R^2$ (**0.4843**).
+- **Baseline Improvement**: Random Forest reduced Test RMSE by **19.59%** and MAE by **15.10%** compared to the Naive Persistence baseline.
 - **Physical Plausibility**: All predicted values were strictly positive and consistent with historical household distributions.
 
 ---
 
-## 9. Dashboard Visualizations & Screenshots
+## 9. Screenshots of the Working Project
+
+Taken on 15 Nov 2026 from the running single-node cluster and dashboard. All 17 are in [screenshots/demo/](screenshots/demo/).
+
+### HDFS: project data in `/smart-energy`
+Raw file, cleaned tables, features, MapReduce outputs and the Hive warehouse.
+
+![HDFS smart-energy directory](screenshots/demo/03_hdfs_smart_energy_root.png)
+
+### HDFS: the full dataset (126.8 MB, 2,075,259 rows)
+
+![Raw dataset in HDFS](screenshots/demo/04_hdfs_raw_dataset.png)
+
+### YARN: MapReduce and Hive jobs, all succeeded
+
+![YARN applications](screenshots/demo/09_yarn_applications.png)
+
+### Hive warehouse: daily table stored as ORC, partitioned by year
+
+![Hive warehouse partitions in HDFS](screenshots/demo/07_hdfs_hive_warehouse_daily_partitions.png)
+
+### HiveServer2
+
+![HiveServer2 web page](screenshots/demo/11_hiveserver2_ui.png)
+
+### Dashboard: energy overview
+
+![Dashboard overview page](screenshots/demo/12_dashboard_page1.png)
+
+### Dashboard: forecasting with Spark MLlib
+
+![Dashboard forecasting page](screenshots/demo/14_dashboard_page3.png)
+
+### Dashboard: Hadoop and Hive cluster results
+
+![Dashboard cluster results page](screenshots/demo/16_dashboard_page5.png)
+
+### Report figures (Matplotlib)
 
 ### Figure 1: Energy Overview Dashboard
 Shows the 4-year daily electricity consumption trend with a 30-day moving average overlay, monthly aggregate energy bar chart, and the 24-hour diurnal demand cycle.
 ![Energy Overview](screenshots/01_energy_overview.png)
 
 ### Figure 2: Consumption Deep-Dive Analysis
-Illustrates the weekday vs. weekend boxplot distribution (+16.5% weekend surge), sub-metering end-use distribution (Climate/Water = 31.8%, Remainder = 58.1%), and diurnal demand curves broken down by day of week.
+Illustrates the weekday vs. weekend boxplot distribution (+19.1% on weekends), sub-metering end-use distribution (Climate/Water = 35.5%, Remainder = 51.2%), and diurnal demand curves broken down by day of week.
 ![Consumption Analysis](screenshots/02_consumption_analysis.png)
 
 ### Figure 3: Machine Learning Forecasting Results
@@ -200,58 +239,17 @@ Presents the statistical anomaly detection scatter plot (identifying 49 high-con
 
 ## 10. How to Run the Project
 
-### Quick Automated Execution
-To run the entire pipeline sequentially from start to finish:
-```powershell
-python scripts/run_pipeline.py
+```bash
+bash run_on_mac.sh            # install Java 11, Hadoop, Hive and the dataset; run everything
+bash run_on_mac.sh status     # running daemons and HDFS contents
+bash run_on_mac.sh hive       # run only the Hive stage again
+bash run_on_mac.sh dashboard  # Streamlit dashboard at http://localhost:8501
+bash run_on_mac.sh stop       # stop HiveServer2 and Hadoop
 ```
 
-### Individual Step Execution
-
-1. **Environment Diagnostics**:
-   ```powershell
-   python scripts/verify_environment.py
-   ```
-
-2. **Data Cleaning & Ingestion**:
-   ```powershell
-   python preprocessing/clean_data.py --input-file data/raw/household_power_consumption.txt
-   ```
-
-3. **Hadoop MapReduce Aggregation & Mathematical Validation**:
-   ```powershell
-   python hadoop/run_mapreduce.py
-   ```
-
-4. **HiveQL Analytical Queries (8 Queries)**:
-   ```powershell
-   python hive/run_hive_analytics.py
-   ```
-
-5. **PySpark Time-Series Feature Engineering**:
-   ```powershell
-   python spark/spark_feature_pipeline.py
-   ```
-
-6. **Spark MLlib Model Training & Evaluation**:
-   ```powershell
-   python forecasting/train_models.py
-   ```
-
-7. **Power BI Star-Schema Export Generation**:
-   ```powershell
-   python dashboard/generate_dashboard_exports.py
-   ```
-
-8. **Publication Figure Rendering**:
-   ```powershell
-   python dashboard/generate_plots.py
-   ```
-
-9. **Automated Unit Testing**:
-   ```powershell
-   python -m pytest tests -v
-   ```
+- Setup details and troubleshooting: [docs/installation.md](docs/installation.md)
+- What each stage does and how to run it alone: [docs/execution.md](docs/execution.md)
+- Feature list and open items: [FEATURES.md](FEATURES.md), [TODO.md](TODO.md)
 
 ---
 
@@ -278,20 +276,29 @@ Smart-Energy-Analytics-Forecasting/
 │   ├── clean_data.py                   # Chunked memory-conscious ingestion & unit conversion
 │   └── missing_data_policy.md          # Scientific missing-data & quality policy
 │
-├── hadoop/                             # Hadoop MapReduce & HDFS modules
-│   ├── mapper.py                       # Hadoop Streaming mapper (kW -> kWh)
-│   ├── reducer.py                      # Hadoop Streaming reducer (Daily kWh sum)
-│   ├── run_mapreduce.py                # Pipeline runner & independent mathematical verification
-│   ├── run_hadoop_job.sh               # Hadoop cluster submission shell script
-│   ├── hdfs_setup.sh                   # HDFS directory creation and ingestion script
-│   └── mapreduce_daily_output.txt      # MapReduce verified output records
+├── run_on_mac.sh                       # One-command setup and run for macOS (Hadoop, Hive, pipeline)
+├── FEATURES.md                         # Everything the project contains
+├── TODO.md                             # Open items
 │
-├── hive/                               # HiveQL analytical warehouse module
-│   ├── schema.hql                      # DDL for external staging & ORC analytics tables
-│   ├── queries.hql                     # 8 comprehensive HiveQL analytical queries
-│   ├── run_hive_analytics.py           # Spark SQL execution engine & verification harness
-│   ├── hive_execution_report.md        # Formatted execution report with real query outputs
-│   └── query_results/                  # Tabular CSV query result exports (q1 - q8)
+├── hadoop/                             # Hadoop MapReduce & HDFS modules
+│   ├── mapper.py, reducer.py           # Job 1: daily energy totals
+│   ├── mapper_hourly.py, reducer_hourly.py   # Job 2: hour-of-day load profile
+│   ├── mapreduce_yarn_daily_output.txt       # Job 1 output from YARN (1,433 rows)
+│   ├── mapreduce_yarn_hourly_output.txt      # Job 2 output from YARN (24 rows)
+│   ├── mapreduce_yarn_*job_log.txt     # YARN job logs
+│   ├── run_mapreduce.py                # Local mapper/reducer check on the sample
+│   └── mapreduce_daily_output.txt      # Output of the local check
+│
+├── hive/                               # Apache Hive warehouse module
+│   ├── schema.hql                      # Database, raw external table, ORC and Parquet tables
+│   ├── load_cleaned_tables.hql         # Loads the cleaned tables from HDFS into the warehouse
+│   ├── queries.hql                     # 12 HiveQL queries
+│   ├── run_hive_on_cluster.py          # Runs all of the above on HiveServer2 through beeline
+│   ├── cluster_results/                # q01.csv ... q12.csv returned by Hive
+│   ├── hive_cluster_report.md          # Hive run report with timings
+│   ├── run_hive_analytics.py           # Spark SQL cross-check (11 queries)
+│   ├── query_results/                  # Spark SQL results
+│   └── hive_execution_report.md        # Spark SQL run report
 │
 ├── spark/                              # Apache Spark core module
 │   └── spark_feature_pipeline.py       # PySpark backwards windowing feature engineering
@@ -304,21 +311,18 @@ Smart-Energy-Analytics-Forecasting/
 ├── dashboard/                          # Business Intelligence & Power BI module
 │   ├── generate_dashboard_exports.py   # Star-Schema CSV export generator
 │   ├── generate_plots.py               # Publication figure renderer (Matplotlib)
-│   ├── dax_measures.md                 # Production DAX formulas guide
-│   ├── dashboard_layout.md             # Power BI 4-page layout specifications
 │   └── power_bi_exports/               # 5 Power BI import-ready Star-Schema CSV tables
 │
-├── screenshots/                        # Actual execution-generated visual figures
+├── screenshots/                        # Report figures; demo/ holds browser screenshots of HDFS, YARN, Hive and the dashboard
 │   ├── 01_energy_overview.png
 │   ├── 02_consumption_analysis.png
 │   ├── 03_forecasting_results.png
 │   └── 04_sustainability_insights.png
 │
 ├── scripts/                            # Operational automation scripts
-│   ├── run_pipeline.py                 # End-to-end master pipeline runner
-│   └── verify_environment.py           # System diagnostics & environment checker
+│   └── run_pipeline.py                 # End-to-end master pipeline runner
 │
-├── tests/                              # Pytest automated test suite (24 tests)
+├── tests/                              # Pytest automated test suite (35 tests)
 │   ├── test_preprocessing.py           # Unit conversions & parsing
 │   ├── test_mapreduce.py               # Mapper, reducer, and streaming pipeline
 │   ├── test_features.py                # Data leakage prevention & windowing
@@ -327,13 +331,13 @@ Smart-Energy-Analytics-Forecasting/
 │
 ├── docs/                               # Detailed academic documentation
 │   ├── architecture.md                 # System architecture & Mermaid diagrams
-│   ├── installation.md                 # Setup guide for Windows 11 & WSL2
+│   ├── installation.md                 # Setup guide for macOS
 │   ├── execution.md                    # Execution guide & viva presentation sequence
 │   ├── methodology.md                  # Mathematical formulations & leakage rules
 │   ├── results.md                      # Comprehensive empirical results
 │   ├── limitations.md                  # Technical limitations & future scope
-│   ├── viva_questions.md               # 23 academic viva questions with answers
-│   └── academic_report.md              # 21-section academic final project report
+│   ├── viva_questions.md               # 30 viva questions with answers
+│   └── academic_report.md              # Project report (Batch 30)
 │
 └── .github/
     └── workflows/
@@ -347,7 +351,7 @@ Smart-Energy-Analytics-Forecasting/
 1. **Single Household Representation**: Telemetry represents one residential dwelling near Paris, France; spatial generalization to other microgrids requires transfer learning.
 2. **Absence of Weather Telemetry**: The dataset lacks localized temperature and humidity data; features are restricted to internal historical lags and calendar indicators.
 3. **Hardware Constraints**: Execution on an 8 GB RAM laptop requires sequential execution and local Spark worker topologies to prevent memory exhaustion.
-4. **Sub-Metering Granularity**: Unmetered electrical remainder constitutes 58.11% of active energy; individual appliance disaggregation (NILM) is not possible without high-frequency transient sampling.
+4. **Sub-Metering Granularity**: Unmetered electrical remainder constitutes 51.19% of active energy; individual appliance disaggregation (NILM) is not possible without high-frequency transient sampling.
 
 ---
 
@@ -355,9 +359,9 @@ Smart-Energy-Analytics-Forecasting/
 
 This project was developed for the **Big Data Analytics (BDA)** curriculum:
 
-- **Praveen Sagar.M** — Register Number: **814724104117**
-- **Naveen.S** — Register Number: **814724104104**
-- **Academic Batch**: **Batch 13**
+- **Vaibhav** — Roll Number: **AP23110010425**
+- **Saubhagya Kashyap** — Roll Number: **AP23110010439**
+- **Batch**: **Batch 30**
 - **Faculty / Institution**: Department of Computer Science & Engineering
 
 ---

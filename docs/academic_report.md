@@ -1,220 +1,196 @@
-# Smart Energy Consumption Analytics & Forecasting
-## Academic Project Report — Big Data Analytics (BDA)
+# Smart Energy Analytics: Household Electricity Consumption Analysis and Demand Forecasting
 
-**Academic Batch**: 13  
-**Project Team**:
-- **Praveen Sagar.M** — Register No: 814724104117
-- **Naveen.S** — Register No: 814724104104
+## Big Data Course Project Report
 
-**Target Sustainable Development Goal**: UN SDG 7 — Affordable and Clean Energy (Level 3)  
-**Academic Institution / Subject**: Department of Computer Science & Engineering / Big Data Analytics (BDA)
+**Batch**: 30  
+**Team**:
+- **Vaibhav** — Roll No: AP23110010425
+- **Saubhagya Kashyap** — Roll No: AP23110010439
+
+**Tools**: Hadoop HDFS, Hadoop MapReduce (YARN), Apache Hive, Apache Spark (PySpark, Spark SQL, Spark MLlib), Streamlit, Matplotlib  
+**Dataset**: UCI Individual Household Electric Power Consumption  
+**Based on**: the MIT-licensed project by Praveen Sagar M and Naveen S ([source](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting)). Section 11 states which parts come from that project and which parts are ours.
 
 ---
 
 ## 1. Abstract
-The rapid global deployment of smart electrical grid infrastructure has resulted in massive streams of high-frequency sensor telemetry. Extracting actionable energy conservation insights and generating accurate short-term demand forecasts from these continuous measurement streams is a vital challenge for grid stability and sustainable energy transition. This project presents a complete, distributed Big Data Analytics and Machine Learning framework built upon the UCI Individual Household Electric Power Consumption dataset (comprising 2,075,259 one-minute observations collected over 47 continuous months). The proposed system incorporates distributed storage concepts (HDFS), distributed stream aggregation via Hadoop MapReduce, complex analytical querying via Apache HiveQL, leak-free feature engineering in Apache Spark, and next-day energy forecasting utilizing Apache Spark MLlib. Comparative model evaluation across strict chronological partitions demonstrates that a Random Forest ensemble achieves a Root Mean Squared Error (RMSE) of 5.16 kWh and an $R^2$ of 0.4836 on previously untouched test data, outperforming both Linear Regression (RMSE 5.37 kWh) and a Naive Persistence Baseline (RMSE 6.42 kWh). An end-to-end Star Schema analytical export is created for Microsoft Power BI, enabling multi-dimensional visualization of diurnal curves, sub-metering breakdowns, and demand-side peak-shaving opportunities in alignment with United Nations Sustainable Development Goal 7 (Affordable and Clean Energy).
 
----
+Smart meters record household electricity use every minute, which produces far more data than a utility bill and far more than a spreadsheet handles comfortably. This project takes four years of one-minute readings from one household (2,075,259 rows) and runs them through a Hadoop and Spark pipeline on a single-node cluster. The raw file is stored in HDFS. Two MapReduce jobs on YARN compute daily energy totals and the hour-of-day load profile. Apache Hive holds the cleaned data in ORC and Parquet tables and answers 12 analysis queries. PySpark builds leak-free time-series features, and Spark MLlib trains models that predict the next day's consumption. A Streamlit dashboard presents the results.
 
-## 2. Introduction
-Modern electrical utility networks are transitioning from centralized, unidirectional transmission architectures toward decentralized smart grids. High-frequency smart meters record instantaneous power, current, and voltage parameters at fine temporal resolutions (minute-by-minute or second-by-second). However, high-frequency telemetry presents immense volume, velocity, and variety challenges. Traditional relational database management systems (RDBMS) fail to scale efficiently when processing multi-million-row time-series streams or computing complex historical rolling window statistics. Big Data frameworks such as Apache Hadoop and Apache Spark provide the computational infrastructure necessary to store, transform, and model these data streams reliably.
+The main findings: demand peaks at 20:00 and is lowest at 04:00, a ratio of 4.3 to 1; weekends use 19.1% more than weekdays; December uses 2.6 times as much per day as August; and a Random Forest model predicts next-day consumption with a mean error of 3.82 kWh, against 4.50 kWh for the naive baseline.
 
----
+## 2. Problem Statement
 
-## 3. Problem Statement
-Given continuous high-frequency smart meter telemetry:
-1. Raw observations exhibit missing readings, sensor dropouts, noise, and mixed physical units (kilowatts vs. Watt-hours) that corrupt analytical validity if processed naively.
-2. Large-scale temporal aggregation across multi-year horizons creates computational bottlenecks on single-node compute engines.
-3. Conventional machine learning workflows frequently suffer from severe data leakage by applying random shuffling or contemporaneous statistics, resulting in non-generalizable forecasting models.
-4. Consumers and utility operators lack unified, interactive business intelligence dashboards that translate raw telemetry into practical, actionable peak-shaving and energy conservation insights.
+Given one-minute smart meter readings for a household:
 
----
+1. The raw data has missing readings and mixed units (kW for power, Wh for sub-meters), so it cannot be summed directly.
+2. Questions about patterns (when is the peak, how do seasons differ, what uses the energy) need aggregation over millions of rows.
+3. Forecasting next-day demand is easy to get wrong: a model that sees same-day or future information reports accuracy it cannot achieve in use.
 
-## 4. Objectives
-- **Data Ingestion & Physical Cleansing**: Ingest 2,075,259 one-minute raw readings, convert power (kW) to interval energy (kWh), convert sub-metering (Wh) to kWh, derive unmetered energy, and track daily completeness.
-- **HDFS Architecture**: Design a multi-tier distributed storage structure (`/smart-energy/raw`, `/cleaned`, `/mapreduce`, `/hive`).
-- **Hadoop MapReduce Implementation**: Author and execute genuine Python Streaming Mapper and Reducer jobs to compute daily consumption, verifying mathematical agreement with independent vector calculations.
-- **HiveQL Analytical Modeling**: Implement 8 multidimensional queries assessing diurnal patterns, peak demand hours, weekday/weekend variations, seasonal shifts, and sub-metering end-use distributions.
-- **Spark Feature Engineering**: Build a leak-free feature matrix using PySpark windowing with lagged and preceding rolling features.
-- **Spark MLlib Predictive Modeling**: Train, validate, and evaluate Naive Baseline, Linear Regression, and Random Forest Regressor models on strict chronological partitions.
-- **Power BI Decision Support**: Design a 4-page Star Schema Power BI dashboard and publication-quality visualizations for SDG 7 sustainability reporting.
+## 3. Objectives
 
----
+1. Store the dataset in HDFS and process it with Hadoop MapReduce on YARN.
+2. Build a Hive warehouse over the data and answer analysis questions in HiveQL.
+3. Engineer time-series features in PySpark without data leakage.
+4. Train and evaluate next-day forecasting models in Spark MLlib against a naive baseline.
+5. Present the results in an interactive dashboard.
 
-## 5. Existing Approaches
-Traditional energy analytics rely on centralized SQL databases and static univariate statistical models (e.g., classical ARIMA or basic exponential smoothing). While mathematically sound for low-frequency monthly utility bills, existing approaches exhibit significant limitations:
-- **Scalability Bottlenecks**: Inability to process high-frequency minute-level data streams without severe down-sampling.
-- **Lack of Non-Linear Interactions**: Inability of linear time-series techniques to capture complex non-linear interactions between seasonal calendar cycles and human domestic behavioral patterns.
-- **Pervasive Data Leakage**: Widespread reliance on random train/test splits that leak future information into training features.
+## 4. Dataset
 
----
+| Property | Value |
+|---|---|
+| Source | UCI Machine Learning Repository (EDF R&D, France) |
+| Coverage | One household in Sceaux, near Paris; 16 Dec 2006 to 26 Nov 2010 |
+| Rows | 2,075,259 one-minute readings (126.8 MB) |
+| Columns | Date, time, active power (kW), reactive power (kW), voltage (V), current (A), three sub-meters (Wh): kitchen, laundry, water heater and air conditioner |
+| Missing | 25,979 readings (1.25%) marked `?` |
 
-## 6. Proposed System
-The proposed system introduces an integrated Big Data pipeline combining distributed Hadoop batch processing with in-memory Apache Spark analytics:
-1. **Streaming Data Cleansing**: Memory-conscious chunked ingestion with strict missing-data policies.
-2. **Distributed MapReduce**: Parallel map-side unit transformation and reduce-side key aggregation.
-3. **Hive SQL Analytical Layer**: Standardized HiveQL queries structured into optimized external and ORC tables.
-4. **PySpark Windowing Feature Pipeline**: Causal backwards-looking rolling statistics (`rowsBetween(-W, -1)`).
-5. **Spark MLlib Supervised Forecasting**: Chronologically isolated training, validation, and testing.
-6. **Dimensional Serving**: Star-schema CSV exports ready for Microsoft Power BI Desktop ingestion.
+## 5. System Architecture
 
----
+The cluster is a single node (Apple M1 MacBook, 8 GB RAM) running Hadoop 3.3.6, Hive 4.0.1 and PySpark 3.5.3 on Java 11. One script, `run_on_mac.sh`, installs and runs everything.
 
-## 7. System Architecture
-The system architecture spans 5 modular layers:
 ```
-Raw Ingestion (clean_data.py)
-       │
-       ▼
-HDFS Directory Storage (/smart-energy/...)
-       │
-       ├───────────────────────────────┐
-       ▼                               ▼
-Hadoop MapReduce (Streaming)     HiveQL Analytics Engine (8 Queries)
-       │                               │
-       └───────────────┬───────────────┘
-                       ▼
-       PySpark Feature Pipeline (Windowing Lags & Rolling Stats)
-                       │
-                       ▼
-       Spark MLlib Predictive Modeling (Baseline, LR, RF)
-                       │
-                       ▼
-       Power BI Star Schema & Publication Figures (screenshots/)
+UCI raw file ──► HDFS /smart-energy/raw
+                    │
+        ┌───────────┼──────────────────────────┐
+        ▼           ▼                          ▼
+ MapReduce on YARN  Cleaning (pandas)   Hive external table
+ - daily totals     daily + hourly      over the raw file
+ - hourly profile        │
+                         ▼
+              HDFS /smart-energy/cleaned
+                         │
+           ┌─────────────┴──────────────┐
+           ▼                            ▼
+ Hive warehouse (ORC, Parquet)   PySpark features ──► HDFS /smart-energy/features
+ 12 queries on YARN                                          │
+                                                             ▼
+                                                  Spark MLlib models
+                                                             │
+                                                             ▼
+                                        Streamlit dashboard and figures
 ```
 
----
+The diagram in `docs/architecture.md` shows the same flow in more detail.
 
-## 8. Module Descriptions
-1. **Module 1: Preprocessing & Unit Normalization (`preprocessing/clean_data.py`)**:
-   Enforces physical unit transformations: $\text{Energy (kWh)} = P (\text{kW}) \times \frac{1}{60}$; converts sub-metering from Wh to kWh; derives remainder energy; flags missing records (`?`); and computes daily completeness ratios.
-2. **Module 2: Hadoop MapReduce Engine (`hadoop/mapper.py`, `hadoop/reducer.py`)**:
-   Streams text records via standard I/O; extracts dates; emits key-value pairs; sorts by date; and accumulates daily energy and valid minute counts.
-3. **Module 3: HiveQL Analytical Engine (`hive/schema.hql`, `hive/queries.hql`)**:
-   Defines external and ORC table schemas and executes 8 comprehensive queries assessing temporal consumption dynamics.
-4. **Module 4: PySpark Feature Engineering (`spark/spark_feature_pipeline.py`)**:
-   Uses PySpark Window specifications to generate 15 leak-free lag and rolling features without forward leakage.
-5. **Module 5: Machine Learning Forecasting (`forecasting/train_models.py`)**:
-   Partitions data chronologically (70% Train, 15% Validation, 15% Test); fits Linear Regression and Random Forest models; and evaluates MAE, RMSE, $R^2$, and MAPE.
-6. **Module 6: Business Intelligence & Dashboard (`dashboard/`)**:
-   Generates dimensional tables (`dim_calendar`, `fact_daily_energy`, `fact_hourly_energy`, `fact_forecast_comparison`, `dim_model_performance`) and renders 4 publication plots.
+## 6. Implementation
 
----
+### 6.1 Storage: HDFS
 
-## 9. Dataset Overview
-- **Dataset**: UCI Individual Household Electric Power Consumption.
-- **Source**: UCI Machine Learning Repository / EDF R&D (France).
-- **Temporal Span**: December 16, 2006 (17:24) to November 26, 2010 (21:02) — 47 continuous months.
-- **Total Records**: 2,075,259 one-minute observations.
-- **Attributes**: Date, Time, Global_active_power (kW), Global_reactive_power (kW), Voltage (V), Global_intensity (A), Sub_metering_1 (Kitchen Wh), Sub_metering_2 (Laundry Wh), Sub_metering_3 (Climate/Water Wh).
+HDFS runs with one NameNode and one DataNode, replication factor 1. Everything lives under `/smart-energy`: `raw` (the dataset), `cleaned` (daily and hourly tables), `features` (Parquet), `mapreduce` (job outputs) and `hive/warehouse` (Hive tables).
 
----
+### 6.2 Batch processing: MapReduce on YARN
 
-## 10. Data Preprocessing & Validation
-- **Missing Data Policy**: 25,979 rows (1.2518%) contain `?` across active power and voltage. In accordance with physical standards, missing periods are excluded from energy summations and flagged; no synthetic interpolation is performed.
-- **Completeness Tracking**: Days with $\ge 85\%$ completeness (at least 1,224 valid minutes) are designated as valid for modeling ($N_{\text{valid}} = 1,420$ days).
-- **Energy Conservation Validation**: Monitored sub-meters account for 41.89% of active energy, with the remaining 58.11% attributed to lighting, consumer electronics, and general plug loads.
+Both jobs are Hadoop Streaming jobs written in Python. Each reads all 2,075,259 rows from HDFS and ran with two map tasks and one reduce task.
 
----
+| Job | Mapper | Reducer | Output |
+|---|---|---|---|
+| Daily energy totals | Skips the header and `?` rows; converts each reading to energy (kW ÷ 60 = kWh); emits `date, kWh, 1` | Sums energy and counts readings per date | 1,433 rows |
+| Hour-of-day load profile | Same filtering; emits `hour, kWh, kW` | Total energy, reading count, average power and peak power per hour | 24 rows |
 
-## 11. Hadoop MapReduce Implementation
-The MapReduce pipeline was tested and mathematically verified using `hadoop/run_mapreduce.py`:
-- **Mapper Execution**: Emitted 5,000 key-value pairs from test input.
-- **Shuffle & Sort**: Grouped and ordered intermediate keys alphabetically by date.
-- **Reducer Aggregation**: Summed interval kWh and counted records per date.
-- **Mathematical Equivalence**: Compared against an independent Pandas reference on identical data; maximum energy discrepancy was **0.000033 kWh**, verifying 100% equivalence down to floating-point rounding.
+### 6.3 Cleaning
 
----
+`preprocessing/clean_data.py` reads the raw file in chunks of 250,000 rows. It drops missing readings without filling them in, converts power to energy and sub-meter Wh to kWh, and computes the energy not covered by any sub-meter. It writes an hourly table (34,168 rows) and a daily table (1,433 rows). A day counts as valid when at least 85% of its 1,440 readings are present: 1,420 days are valid. Both tables are then uploaded to HDFS.
 
-## 12. HiveQL Analytical Query Execution
-All 8 queries were executed on actual processed data:
-- **Query 1 (Daily Series)**: Tracked 1,420 valid daily consumption totals.
-- **Query 2 (Monthly Aggregates)**: Discovered peak monthly consumption during winter (December/January, averaging 32–36 kWh/day) and lowest in summer (August, averaging 14–18 kWh/day).
-- **Query 3 & 4 (Diurnal Profile & Peaks)**: Pinpointed maximum peak demand at 20:00 (1.94 kWh/hr) and minimum nocturnal baseload at 03:00 (0.46 kWh/hr).
-- **Query 5 (Extreme Dates)**: Identified highest single-day historical consumption on June 4, 2007 (69.83 kWh).
-- **Query 6 (Weekday vs. Weekend)**: Weekends average 29.17 kWh/day vs. weekdays 25.04 kWh/day (+16.49% weekend surge).
-- **Query 7 (Seasonality)**: Confirmed strong winter-peaking thermal characteristics.
-- **Query 8 (Sub-Metering Distribution)**: Sub 3 (Water/Climate) represents 31.78% of household energy, Sub 1 (Kitchen) 5.22%, Sub 2 (Laundry) 4.89%, and Remainder 58.11%.
+### 6.4 Data warehouse: Apache Hive
 
----
+HiveServer2 runs with an embedded Derby metastore and the MapReduce execution engine, so every aggregation runs as one or more jobs on YARN.
 
-## 13. PySpark Feature Engineering
-- Windowing: Configured with `Window.orderBy("Date_ISO").rowsBetween(-W, -1)` to strictly prevent current-day or future leakage.
-- Features Constructed: Lags 1, 2, 7 days; 7-day rolling mean and standard deviation; 14-day rolling mean; lag 1 voltage and power; sub-metering lags; and calendar indicators (Day of week, Weekend flag, Month).
-- Final Feature Dataset: 1,413 complete chronological records with zero null values.
+| Table | Storage | Source |
+|---|---|---|
+| `raw_household_power` | External table, text | The raw file in `/smart-energy/raw` |
+| `daily_energy_consumption` | ORC, partitioned by year | Loaded from the cleaned daily table with dynamic partitioning |
+| `hourly_energy_consumption` | Parquet | Loaded from the cleaned hourly table |
 
----
+Twelve queries are in `hive/queries.hql`; `hive/run_hive_on_cluster.py` runs each through beeline and saves the result. Spark SQL re-runs eleven of them from HDFS as a cross-check, and the numbers agree.
 
-## 14. Machine Learning Methodology
-- **Partitioning Strategy**:
-  - Train Set: 989 days (70%, 2006-12-24 to 2009-09-14)
-  - Validation Set: 211 days (15%, 2009-09-15 to 2010-04-18)
-  - Held-out Test Set: 213 days (15%, 2010-04-19 to 2010-11-26)
-- **Algorithms Evaluated**:
-  1. Naive Persistence Baseline ($\hat{y}_{t+1} = y_t$)
-  2. Spark MLlib Linear Regression (ElasticNet penalty)
-  3. Spark MLlib Random Forest Regressor (40 trees, max depth 5)
+### 6.5 Feature engineering: PySpark
 
----
+`spark/spark_feature_pipeline.py` reads the cleaned daily table from HDFS and builds 15 features with window functions: consumption 1, 2 and 7 days earlier; the 7-day mean, 7-day standard deviation and 14-day mean of the preceding days; the previous day's average power, peak power, voltage and sub-meter totals; and day of week, weekend flag and month. Every rolling window ends on the previous day (`rowsBetween(-7, -1)`), so no feature contains information from the day being predicted. The result has 1,413 days and is written to HDFS as Parquet.
 
-## 15. Model Evaluation & Comparative Discussion
+### 6.6 Forecasting: Spark MLlib
 
-### Quantitative Results on Held-Out Test Data:
-| Model Name | Test MAE (kWh) | Test RMSE (kWh) | Test $R^2$ | Test MAPE (%) | Validation RMSE |
-|---|---|---|---|---|---|
-| **Naive Baseline** | 4.4998 | 6.4155 | 0.2024 | 19.20% | 8.4182 |
-| **Linear Regression** | 3.9607 | 5.3711 | 0.4409 | 18.21% | 6.2883 |
-| **Random Forest Regressor** | **3.8297** | **5.1623** | **0.4836** | **18.13%** | **6.0823** |
+`forecasting/train_models.py` reads the features from HDFS and predicts each day's total consumption. The data is split by time, never shuffled: 989 days for training, 211 for validation and 213 for testing (19 April to 26 November 2010). Three models are compared: a naive baseline that predicts yesterday's value, Linear Regression with elastic-net regularisation, and a Random Forest with 40 trees of depth 5. The model with the lowest validation error is selected.
 
-### Evaluation Discussion:
-- **Accuracy Improvement**: Random Forest reduced Test RMSE by 19.53% and MAE by 14.89% relative to the persistence baseline.
-- **Explained Variance**: The $R^2$ metric improved from 0.2024 (baseline) to 0.4836 (Random Forest), demonstrating that historical lags and preceding rolling statistics capture nearly half of the day-to-day variance in household electricity demand.
-- **Model Selection Justification**: Random Forest achieved the lowest validation RMSE (6.0823), justifying its selection as the primary deployment model.
+### 6.7 Visualization
 
----
+The Streamlit dashboard (`app.py`) has six pages: overview, consumption analysis, forecasting, sustainability insights, Hadoop and Hive cluster results, and project architecture. `dashboard/generate_plots.py` renders four figures for the report with Matplotlib.
 
-## 16. Power BI Dashboard Architecture
-- **Data Model**: Star Schema with `dim_calendar` joined to `fact_daily_energy`, `fact_hourly_energy`, and `fact_forecast_comparison`.
-- **Pages Designed**:
-  1. *Energy Overview*: High-level consumption KPIs, 4-year trend with 30-day moving average, monthly totals.
-  2. *Consumption Analysis*: Weekday vs. weekend boxplots, diurnal demand curves by day of week, sub-metering breakdown.
-  3. *Energy Forecasting*: Actual vs. predicted next-day energy, comparative metric bar charts.
-  4. *Sustainability Insights (SDG 7)*: Statistical anomaly scatter plots, peak-shaving windows, and bill savings estimates.
+## 7. Results
 
----
+### 7.1 MapReduce
 
-## 17. Automated Testing Suite
-A 24-test unit test suite was implemented in `pytest`:
-- Preprocessing unit conversions (kW to kWh, Wh to kWh, remainder): 6 tests passed.
-- MapReduce mapper/reducer streaming logic and edge cases: 6 tests passed.
-- Feature engineering, leakage prevention, and ordering: 5 tests passed.
-- Model evaluation metrics and prediction validity: 3 tests passed.
-- Dashboard export schemas and foreign key referential integrity: 4 tests passed.
-- **Result**: 24 passed in 1.17 seconds (100% pass rate).
+- The daily totals from YARN match the cleaned daily table on all 1,433 days; the largest difference is 0.0001 kWh.
+- The hour-of-day profile shows average demand lowest at 04:00 (0.44 kW) and highest at 20:00 (1.90 kW).
 
----
+### 7.2 Hive analysis
 
-## 18. Limitations
-1. Single household context restricts direct extrapolation to commercial buildings without transfer learning.
-2. Absence of localized weather data (temperature, solar irradiance) limits modeling of climate-driven HVAC loads.
-3. Sub-metering is limited to 3 aggregate circuits; individual appliance non-intrusive load monitoring (NILM) is not possible.
+| Question | Finding |
+|---|---|
+| Which hours are the peak? (Q3, Q4) | 20:00, 21:00 and 19:00, followed by a morning peak at 07:00 and 08:00. The busiest hour uses 4.3 times as much as the quietest. |
+| Weekday or weekend? (Q6) | Weekends average 29.59 kWh per day, weekdays 24.84 kWh: 19.1% higher. |
+| How do seasons differ? (Q7) | December averages 35.6 kWh per day and January 35.1; August averages 13.7 and July 16.8. |
+| What uses the energy? (Q8) | Water heater and air conditioner 35.5%, laundry 7.1%, kitchen 6.2%, unmetered 51.2%. |
+| Which time of day? (Q11) | Evening (18:00 to 23:59) 35.0%, morning 28.9%, afternoon 24.5%, night 11.5%. |
+| Are heavy days becoming rarer? (Q10) | Days above 40 kWh fell from 12.2% of days in 2007 to 4.1% in 2010. |
+| How complete is the raw data? (Q12) | Missing readings are below 1% in every year except 2010 (3.7%). |
 
----
+Query times on Hive ranged from 20 to 82 seconds, because each query starts MapReduce jobs on YARN.
 
-## 19. Conclusion
-This project successfully designed, implemented, tested, and validated an end-to-end Big Data Analytics and Machine Learning system for household energy consumption. By integrating Hadoop MapReduce, HiveQL, PySpark, and Spark MLlib, the system effectively processes multi-million-row smart meter streams, validates mathematical equivalence across distributed execution boundaries, prevents temporal data leakage, and provides actionable demand-side energy conservation insights aligned with UN Sustainable Development Goal 7.
+### 7.3 Forecasting
 
----
+| Model | MAE (kWh) | RMSE (kWh) | R² | MAPE |
+|---|---|---|---|---|
+| Naive baseline | 4.50 | 6.42 | 0.20 | 19.2% |
+| Linear Regression | 3.96 | 5.37 | 0.44 | 18.2% |
+| Random Forest (selected) | 3.82 | 5.16 | 0.48 | 18.2% |
 
-## 20. Future Scope
-1. **Multivariate Weather Integration**: Ingest real-time meteorological API data (ambient temperature, humidity, wind speed) to enhance HVAC forecasting.
-2. **Deep Learning Sequence Models**: Explore Long Short-Term Memory (LSTM) networks and Temporal Fusion Transformers (TFT) for multi-step horizon forecasting ($t+7, t+30$).
-3. **Edge Streaming Architecture**: Deploy Apache Kafka and Spark Structured Streaming for real-time sub-minute anomaly alerts.
+The Random Forest reduces RMSE by 19.6% and MAE by 15.1% relative to the baseline. An R² of 0.48 means the model explains about half of the day-to-day variation; the rest depends on things the data does not contain, such as weather and whether the household is at home.
 
----
+### 7.4 Sustainability reading (SDG 7)
 
-## 21. References
-1. **UCI Machine Learning Repository**: Individual Household Electric Power Consumption Dataset. Georges Hébrail, Alice Bérard. EDF R&D, 2012. https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption
-2. **Apache Hadoop Documentation**: Hadoop Streaming, HDFS Architecture, and MapReduce Tutorial. Apache Software Foundation. https://hadoop.apache.org/docs/stable/
-3. **Apache Spark Documentation**: Spark SQL, DataFrames and MLlib Guide (Regression, VectorAssembler). Apache Software Foundation. https://spark.apache.org/docs/latest/
-4. **United Nations Sustainable Development Goals**: Goal 7: Ensure access to affordable, reliable, sustainable and modern energy for all. https://sdgs.un.org/goals/goal7
+The evening band from 18:00 to 23:59 carries 35% of the household's energy, and the largest metered load is the water heater and air conditioner. Both point to the same action: moving water heating, laundry and dishwashing into the 01:00 to 05:00 valley would flatten the load curve. The dataset has no tariff information, so we do not put a money figure on it.
+
+## 8. Testing
+
+35 automated tests (pytest) cover the unit conversions, both mappers and reducers, leakage checks on the features, model metrics, dashboard exports and the cluster outputs. The cluster tests confirm that the YARN totals equal the cleaned table, that the hourly job returns 24 hours consistent with the daily job, and that Hive's counts on the raw table add up to 2,075,259 rows with 25,979 missing.
+
+## 9. Limitations
+
+1. **Scale.** 126.8 MB fits in one HDFS block. The project demonstrates the workflow of a cluster, not its scale.
+2. **Single node.** Replication factor 1 and one machine, so there is no fault tolerance.
+3. **Spark runs in local mode.** It reads from and writes to HDFS but does not run on YARN.
+4. **Hive on MapReduce.** Queries on small tables take 20 to 82 seconds; Tez would be faster.
+5. **One household, no weather data.** The findings describe one home in France, and the forecast cannot see temperature.
+6. **Modest forecast accuracy.** R² is 0.48.
+
+## 10. Conclusion and Future Work
+
+The project runs a complete batch pipeline on Hadoop: storage in HDFS, two MapReduce jobs, a Hive warehouse with 12 queries, Spark features and MLlib models, all started by one script and checked by 35 tests. The analysis gives a consistent picture of the household: an evening peak, a strong winter effect, higher use at weekends, and a forecast that beats the naive baseline.
+
+Next steps would be to run Spark on YARN, add weather data to the features, use Tez as the Hive engine, and repeat the analysis on a multi-household dataset large enough to need more than one HDFS block.
+
+## 11. What comes from the base project and what is ours
+
+**From the base project (MIT licence):** the cleaning script, the first mapper and reducer, the Hive schema and queries 1 to 8, the PySpark feature pipeline, the MLlib training script, the dashboard exports and figures, the first five dashboard pages, and 27 of the tests. In that project MapReduce ran as a local simulation on a 5,000-row sample and the HiveQL ran in Spark SQL only.
+
+**Ours (Batch 30):**
+
+1. `run_on_mac.sh`: single-node Hadoop and Hive on macOS in one command.
+2. MapReduce on YARN over the full dataset.
+3. The second MapReduce job (hour-of-day load profile).
+4. The Hive warehouse on a real Hive server: the load script, the runner, and the fixes for the protobuf conflict and the header row.
+5. Queries 9 to 12.
+6. Spark reading from and writing to HDFS.
+7. The cluster-results dashboard page and the new theme.
+8. Eight tests, the macOS guides, and this report.
+9. Corrections to figures in the base project's documents that did not match the data (for example, the unmetered share is 51.2%, not 58.1%).
+
+## 12. References
+
+1. Hébrail, G. and Bérard, A. *Individual Household Electric Power Consumption*. UCI Machine Learning Repository, 2012. https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption
+2. Apache Hadoop documentation: HDFS architecture, YARN, Hadoop Streaming. https://hadoop.apache.org/docs/r3.3.6/
+3. Apache Hive documentation: language manual, HiveServer2. https://hive.apache.org/
+4. Apache Spark documentation: Spark SQL, MLlib. https://spark.apache.org/docs/3.5.3/
+5. United Nations. *Sustainable Development Goal 7*. https://sdgs.un.org/goals/goal7
+6. Praveen Sagar M and Naveen S. *Smart-Energy-Analytics-Forecasting* (MIT licence). https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting

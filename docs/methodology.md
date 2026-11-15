@@ -1,8 +1,8 @@
 # Big Data & Machine Learning Methodology
 
 ## Smart Energy Consumption Analytics & Forecasting
-**Academic Batch**: 13  
-**Authors**: Praveen Sagar.M & Naveen.S
+**Batch**: 30  
+**Team**: Vaibhav (AP23110010425) & Saubhagya Kashyap (AP23110010439)
 
 ---
 
@@ -77,6 +77,6 @@ For actual values $y_i$ and predicted values $\hat{y}_i$ across $N$ test days:
 ## 4. SDG 7 Alignment: Affordable & Clean Energy
 
 The analytical and predictive pipelines directly address United Nations Sustainable Development Goal 7 (Target 7.3: Double the global rate of improvement in energy efficiency):
-1. **Intra-Day Peak Shaving**: Identifies the 18:00–21:00 evening peak where household demand averages 2.12 kW, exerting maximum stress on the electrical grid.
-2. **Nocturnal Load Shifting**: Demonstrates that shifting heavy discretionary thermal loads (laundry, dishwashing, water heating) to the 01:00–05:00 valley (averaging 0.48 kW) lowers grid peak-to-average ratio (PAR) and saves residential consumers €280–€420 annually under time-of-use tariffs.
-3. **Statistical Anomaly Detection**: Automatically flags anomalous consumption spikes ($> \mu + 2\sigma = 48.2 \text{ kWh}$), enabling prompt identification of malfunctioning appliances, continuous parasitic baseloads, or thermal insulation leakage.
+1. **Intra-Day Peak Shaving**: Identifies the 18:00–21:00 evening peak where household demand averages 1.71 kW, exerting maximum stress on the electrical grid.
+2. **Nocturnal Load Shifting**: Demonstrates that shifting heavy discretionary thermal loads (laundry, dishwashing, water heating) to the 01:00–05:00 valley (averaging 0.47 kW) lowers the peak of the household's load curve. How much a household saves depends on its time-of-use tariff; this dataset has no tariff data, so no saving is quantified.
+3. **Statistical Anomaly Detection**: Automatically flags anomalous consumption spikes ($> \mu + 2\sigma = 46.2 \text{ kWh}$), enabling prompt identification of malfunctioning appliances, continuous parasitic baseloads, or thermal insulation leakage.

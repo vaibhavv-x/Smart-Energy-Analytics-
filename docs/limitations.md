@@ -1,8 +1,8 @@
 # Technical Limitations & System Boundaries
 
 ## Smart Energy Consumption Analytics & Forecasting
-**Academic Batch**: 13  
-**Authors**: Praveen Sagar.M & Naveen.S
+**Batch**: 30  
+**Team**: Vaibhav (AP23110010425) & Saubhagya Kashyap (AP23110010439)
 
 ---
 
@@ -22,11 +22,16 @@
 ## 2. Infrastructure & Environment Limitations
 
 1. **Host Hardware Constraints (8 GB RAM)**:
-   - The host development laptop possesses 8 GB of physical RAM. Running concurrent multi-node distributed daemons (Hadoop NameNode, DataNode, YARN ResourceManager, NodeManager, Hive Metastore, and Spark Worker) simultaneously exceeds available RAM, risking Out-Of-Memory (OOM) operating system thrashing.
+   - The development MacBook (Apple M1) has 8 GB of physical RAM. Running concurrent distributed daemons (Hadoop NameNode, DataNode, YARN ResourceManager, NodeManager, Hive Metastore, and Spark Worker) simultaneously exceeds available RAM, risking Out-Of-Memory (OOM) operating system thrashing.
    - *Mitigation*: The project adopted a resource-conscious sequential execution architecture and single-worker local Spark mode (`local[1]`).
-2. **Windows Operating System & PySpark Worker Compatibility**:
-   - On Windows 11 with Python 3.13, PySpark's internal Python worker daemon crashes during inter-process socket communication.
-   - *Engineering Solution*: Native JVM Catalyst DataFrame and Spark MLlib execution were leveraged directly, bypassing unstable Python worker pipes while maintaining genuine Spark execution.
+2. **Single-Node Cluster**:
+   - HDFS, YARN and HiveServer2 all run on one MacBook with replication factor 1. The dataset (126.8 MB) fits in a single HDFS block, so jobs use one or two map tasks. The pipeline shows the workflow of a cluster, not its scale or fault tolerance.
+3. **Spark Runs in Local Mode**:
+   - Spark reads its inputs from HDFS and writes the feature table back to HDFS, but the computation runs in a local Spark session (`local[1]`), not on YARN.
+4. **Hive Uses the MapReduce Engine and an Embedded Metastore**:
+   - Hive 4.0.1 runs queries as MapReduce jobs on YARN (Tez is not installed), so each aggregation takes 20 to 90 seconds on tables of a few thousand rows. The metastore is an embedded Derby database, which allows only one HiveServer2 process.
+5. **Java Versions**:
+   - Hadoop 3.3.6, Hive 4.0.1 and PySpark 3.5.3 run on Java 11. The Mac's default Java 25 is not supported by them, so `run_on_mac.sh` installs its own JDK 11.
 
 ---
 

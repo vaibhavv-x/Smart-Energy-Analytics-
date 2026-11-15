@@ -1,45 +1,55 @@
 # System Architecture Document
 
 ## Smart Energy Consumption Analytics & Forecasting
-**Academic Batch**: 13  
+**Batch**: 30  
 **Subject**: Big Data Analytics (BDA)  
-**Authors**: Praveen Sagar.M (814724104117) & Naveen.S (814724104104)  
+**Team**: Vaibhav (AP23110010425) & Saubhagya Kashyap (AP23110010439)  
 **Sustainable Development Goal**: SDG 7 — Affordable and Clean Energy (Level 3)
 
 ---
 
 ## 1. Architectural Overview
 
-The system implements a scalable, lambda-inspired Big Data analytics architecture tailored for high-frequency electrical smart meter streams. The pipeline takes raw 1-minute smart meter telemetry (over 2 million observations), cleans and normalizes physical units, validates data completeness, performs distributed batch aggregations via Hadoop MapReduce and HiveQL, builds leak-free historical time-series features in Apache Spark, trains machine learning forecasting models via Spark MLlib, and serves interactive star-schema analytical models to Microsoft Power BI.
+The system implements a scalable, lambda-inspired Big Data analytics architecture tailored for high-frequency electrical smart meter streams. The pipeline takes raw 1-minute smart meter telemetry (over 2 million observations), cleans and normalizes physical units, validates data completeness, performs distributed batch aggregations via Hadoop MapReduce and HiveQL, builds leak-free historical time-series features in Apache Spark, trains machine learning forecasting models via Spark MLlib, and serves the results through a Streamlit dashboard and Matplotlib figures. Star-schema CSV tables are also exported for Power BI or Tableau.
 
 ```mermaid
 flowchart TD
-    subgraph Ingestion["1. Raw Ingestion Layer"]
-        RAW["UCI Household Power Consumption<br/>(2,075,259 one-minute readings)"] --> CLEAN["Preprocessing & Validation Engine<br/>(clean_data.py)"]
-        CLEAN --> PROCD["Cleaned Hourly & Daily Aggregates<br/>(hourly & daily CSV/ORC)"]
-    end
+    RAW["UCI raw file<br/>2,075,259 one-minute readings"] --> HDFSRAW["HDFS /smart-energy/raw"]
 
-    subgraph Storage["2. Storage & Big Data Infrastructure Layer"]
-        PROCD --> HDFS["HDFS Directory Structure<br/>/smart-energy/raw<br/>/smart-energy/mapreduce<br/>/smart-energy/hive"]
+    subgraph Batch["Hadoop MapReduce on YARN"]
+        MR1["Job 1: daily energy totals<br/>mapper.py, reducer.py"]
+        MR2["Job 2: hour-of-day load profile<br/>mapper_hourly.py, reducer_hourly.py"]
     end
+    HDFSRAW --> MR1
+    HDFSRAW --> MR2
 
-    subgraph Distributed["3. Distributed Batch & SQL Analytics Layer"]
-        HDFS --> MR["Hadoop Streaming MapReduce<br/>Mapper: 1-min kW to kWh<br/>Reducer: Daily kWh aggregation"]
-        HDFS --> HIVE["Hive / Spark SQL Metastore<br/>8 Analytical HiveQL Queries<br/>Diurnal profiles & Sub-metering"]
-    end
+    RAW --> CLEAN["Cleaning and aggregation<br/>clean_data.py"]
+    CLEAN --> HDFSCLEAN["HDFS /smart-energy/cleaned<br/>daily and hourly tables"]
 
-    subgraph FeatureML["4. Feature Engineering & Machine Learning Layer"]
-        PROCD --> SPARK_FEAT["PySpark Feature Pipeline<br/>Lagged features (1, 2, 7 days)<br/>Preceding rolling stats (7D, 14D)<br/>Zero forward leakage"]
-        SPARK_FEAT --> SPLIT["Chronological Slicing<br/>Train: 70% | Val: 15% | Test: 15%"]
-        SPLIT --> ML["Spark MLlib Model Suite<br/>1. Naive Persistence Baseline<br/>2. Regularized Linear Regression<br/>3. Random Forest Regressor"]
-        ML --> EVAL["Evaluation Engine<br/>MAE, RMSE, R², MAPE"]
+    subgraph Warehouse["Apache Hive (HiveServer2, MapReduce engine)"]
+        HRAW["External table over the raw file"]
+        HTAB["daily table: ORC, partitioned by year<br/>hourly table: Parquet"]
+        HQ["12 HiveQL queries"]
+        HRAW --> HQ
+        HTAB --> HQ
     end
+    HDFSRAW --> HRAW
+    HDFSCLEAN --> HTAB
 
-    subgraph Serving["5. Serving, Visualization & SDG 7 Reporting"]
-        EVAL --> PBI["Power BI Star Schema Exports<br/>dim_calendar, fact_daily, fact_hourly<br/>fact_forecast, dim_model_performance"]
-        HIVE --> PBI
-        PBI --> DASH["Power BI Desktop & Academic Plots<br/>Energy Overview | Consumption Deep-Dive<br/>ML Forecasting | SDG 7 Sustainability"]
+    subgraph SparkML["Apache Spark"]
+        SQL["Spark SQL: same analysis, cross-check"]
+        FEAT["PySpark window features<br/>lags and preceding rolling statistics"]
+        HDFSFEAT["HDFS /smart-energy/features (Parquet)"]
+        ML["Spark MLlib<br/>naive baseline, Linear Regression, Random Forest"]
+        FEAT --> HDFSFEAT --> ML
     end
+    HDFSCLEAN --> SQL
+    HDFSCLEAN --> FEAT
+
+    MR1 --> DASH["Streamlit dashboard and Matplotlib figures"]
+    MR2 --> DASH
+    HQ --> DASH
+    ML --> DASH
 ```
 
 ---
@@ -63,8 +73,10 @@ flowchart TD
 - **Hadoop MapReduce (Streaming)**:
   - `mapper.py`: Streams individual line records, performs unit transformation $\text{kWh} = \text{kW} \times (1/60)$, and emits key-value pairs `Date \t Interval_Energy_kWh \t 1`.
   - `reducer.py`: Consolidates keys across the shuffle/sort barrier, aggregating daily energy consumption and validating total daily sampling counts.
-- **Hive / Spark SQL Analytical Engine**:
-  - Executes 8 distinct HiveQL queries measuring diurnal variation, historical maximum dates, weekday vs. weekend behavioral shifts, seasonal monthly trends, and sub-metering end-use distributions.
+- **Second MapReduce job**: `mapper_hourly.py` and `reducer_hourly.py` compute total energy, average power and peak power for each hour of the day.
+- **Apache Hive (HiveServer2)**: an external table over the raw file, a daily ORC table partitioned by year and an hourly Parquet table, loaded from HDFS with dynamic partitioning. All 12 queries run as MapReduce jobs on YARN.
+- **Spark SQL cross-check**:
+  - Executes the HiveQL analysis (11 queries on the cleaned tables) measuring diurnal variation, historical maximum dates, weekday vs. weekend behavioral shifts, seasonal monthly trends, and sub-metering end-use distributions.
 
 ### D. PySpark Feature Engineering & MLlib Modeling
 - **Feature Engineering**:
@@ -77,6 +89,6 @@ flowchart TD
   - Linear Regression: ElasticNet regularized linear predictor.
   - Random Forest Regressor: Non-linear decision tree ensemble trained with 40 trees.
 
-### E. Serving & Visualization Layer (Power BI & Matplotlib)
+### E. Serving & Visualization Layer (Streamlit, Matplotlib, Power BI exports)
 - **Dimensional Modeling**: Star schema with `dim_calendar` establishing 1-to-many relationships with daily, hourly, and forecast fact tables.
 - **Sustainability & SDG 7 Reporting**: Pinpoints peak demand windows (18:00–21:00) vs. off-peak valleys (01:00–05:00) to formulate data-supported demand-side load shifting recommendations.

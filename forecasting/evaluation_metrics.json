@@ -38,9 +38,9 @@
             "R2": 0.2158
         },
         "Random_Forest": {
-            "MAE": 4.5979,
-            "RMSE": 6.0823,
-            "R2": 0.2663
+            "MAE": 4.6521,
+            "RMSE": 6.1262,
+            "R2": 0.2557
         }
     },
     "test_metrics": {
@@ -57,18 +57,18 @@
             "MAPE_pct": 18.21
         },
         "Random_Forest": {
-            "MAE": 3.8297,
-            "RMSE": 5.1623,
-            "R2": 0.4836,
-            "MAPE_pct": 18.13
+            "MAE": 3.8203,
+            "RMSE": 5.1588,
+            "R2": 0.4843,
+            "MAPE_pct": 18.19
         }
     },
     "selected_best_model": {
         "model_name": "Random_Forest",
         "selection_criterion": "Lowest Validation RMSE",
-        "test_mae": 3.8297,
-        "test_rmse": 5.1623,
-        "test_r2": 0.4836,
-        "test_mape_pct": 18.13
+        "test_mae": 3.8203,
+        "test_rmse": 5.1588,
+        "test_r2": 0.4843,
+        "test_mape_pct": 18.19
     }
 }

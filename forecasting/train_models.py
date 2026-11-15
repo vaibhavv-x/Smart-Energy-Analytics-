@@ -20,12 +20,10 @@ import numpy as np
 import pandas as pd
 
 # JVM & Hadoop setup for Windows
-os.environ.setdefault("JAVA_HOME", r"C:\Users\PRAVEENRAJ\jdk-17\jdk-17.0.14+7")
-os.environ.setdefault("HADOOP_HOME", r"C:\hadoop")
-java_bin = os.path.join(os.environ["JAVA_HOME"], "bin")
-hadoop_bin = os.path.join(os.environ["HADOOP_HOME"], "bin")
-path_sep = ";" if os.name == "nt" else ":"
-os.environ["PATH"] = f"{java_bin}{path_sep}{hadoop_bin}{path_sep}{os.environ.get('PATH', '')}"
+# Put JAVA_HOME/bin and HADOOP_HOME/bin on PATH when those variables are set.
+for _var in ("JAVA_HOME", "HADOOP_HOME"):
+    if os.environ.get(_var):
+        os.environ["PATH"] = os.path.join(os.environ[_var], "bin") + os.pathsep + os.environ.get("PATH", "")
 os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
@@ -51,7 +49,14 @@ def train_and_evaluate():
     spark.sparkContext.setLogLevel("WARN")
 
     # Load dataset directly into Spark DataFrame
-    df = spark.read.csv(features_csv, header=True, inferSchema=True)
+    # When SMART_ENERGY_HDFS_URI is set, the feature matrix is read from HDFS (Parquet).
+    hdfs_uri = os.environ.get("SMART_ENERGY_HDFS_URI", "").rstrip("/")
+    if hdfs_uri:
+        features_uri = f"{hdfs_uri}/features/daily_energy_features"
+        print(f"[*] Reading feature matrix from HDFS: {features_uri}")
+        df = spark.read.parquet(features_uri)
+    else:
+        df = spark.read.csv(features_csv, header=True, inferSchema=True)
     df = df.sort("Date_ISO")
     total_samples = df.count()
     print(f"[*] Total dataset records available for modeling: {total_samples}")

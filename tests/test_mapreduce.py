@@ -89,3 +89,43 @@ def test_end_to_end_mapreduce_pipeline():
     results = {l.split("\t")[0]: float(l.split("\t")[1]) for l in out_r.strip().split("\n")}
     assert np.isclose(results["16/12/2006"], 0.20, atol=1e-3)
     assert np.isclose(results["17/12/2006"], 0.20, atol=1e-3)
+
+
+# ------------------------------------------------------------------------------
+# Second MapReduce job: hour-of-day load profile
+# ------------------------------------------------------------------------------
+
+def test_hourly_mapper_emits_hour_key():
+    """Mapper keys each reading by hour of day and converts kW to kWh."""
+    line = "16/12/2006;17:24:00;4.216;0.418;234.840;18.400;0.000;1.000;17.000\n"
+    code, stdout, _ = run_script("hadoop/mapper_hourly.py", line)
+    assert code == 0
+    parts = stdout.strip().split("\t")
+    assert parts[0] == "17"
+    assert np.isclose(float(parts[1]), 4.216 / 60.0, atol=1e-5)
+    assert np.isclose(float(parts[2]), 4.216, atol=1e-3)
+
+
+def test_hourly_mapper_skips_header_and_missing():
+    """Header rows and '?' readings produce no output."""
+    text = (
+        "Date;Time;Global_active_power;Global_reactive_power;Voltage;Global_intensity;Sub_metering_1;Sub_metering_2;Sub_metering_3\n"
+        "28/04/2007;00:21:00;?;?;?;?;?;?;\n"
+    )
+    code, stdout, _ = run_script("hadoop/mapper_hourly.py", text)
+    assert code == 0
+    assert stdout.strip() == ""
+
+
+def test_hourly_reducer_average_and_peak():
+    """Reducer returns total energy, reading count, average power and peak power per hour."""
+    text = "07\t0.020000\t1.200\n07\t0.040000\t2.400\n18\t0.100000\t6.000\n"
+    code, stdout, _ = run_script("hadoop/reducer_hourly.py", text)
+    assert code == 0
+    rows = [r.split("\t") for r in stdout.strip().split("\n")]
+    assert len(rows) == 2
+    assert rows[0][0] == "07" and rows[0][2] == "2"
+    assert np.isclose(float(rows[0][1]), 0.06, atol=1e-4)
+    assert np.isclose(float(rows[0][3]), 1.8, atol=1e-3)
+    assert np.isclose(float(rows[0][4]), 2.4, atol=1e-3)
+    assert rows[1][0] == "18" and np.isclose(float(rows[1][4]), 6.0, atol=1e-3)

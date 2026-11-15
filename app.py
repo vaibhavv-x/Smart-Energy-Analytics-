@@ -10,7 +10,7 @@ import streamlit as st
 # 1. PAGE CONFIGURATION & METADATA
 # ==============================================================================
 st.set_page_config(
-    page_title="Smart Energy Analytics & Forecasting | BDA Mini Project",
+    page_title="Smart Energy Analytics | Batch 30 Big Data Project",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -22,7 +22,7 @@ st.markdown("""
     .main-title {
         font-size: 2.2rem;
         font-weight: 800;
-        color: #1e3a8a;
+        color: #0f766e;
         margin-bottom: 0.2rem;
     }
     .sub-title {
@@ -43,8 +43,8 @@ st.markdown("""
         font-size: 0.8rem;
         font-weight: 600;
         border-radius: 9999px;
-        background-color: #dbeafe;
-        color: #1e40af;
+        background-color: #ccfbf1;
+        color: #115e59;
         margin-right: 0.4rem;
     }
 </style>
@@ -105,9 +105,9 @@ daily_df, daily_valid, hourly_df, preds_df, metrics_dict, summary_dict = load_pr
 st.sidebar.image("https://img.icons8.com/fluency/96/flash-on.png", width=64)
 st.sidebar.markdown("### **Smart Energy Analytics**")
 st.sidebar.markdown(
-    "<span class='badge-pill'>Batch 13</span>"
+    "<span class='badge-pill'>Batch 30</span>"
     "<span class='badge-pill'>UN SDG 7</span>"
-    "<span class='badge-pill'>BDA Mini Project</span>",
+    "<span class='badge-pill'>Hadoop · Hive · Spark</span>",
     unsafe_allow_html=True
 )
 
@@ -119,7 +119,8 @@ nav_choice = st.sidebar.radio(
         "🔍 Deep-Dive Consumption Analysis",
         "🤖 Machine Learning Forecasting",
         "🌿 Sustainability & SDG 7 Insights",
-        "📚 Academic & Big Data Architecture"
+        "🐘 Hadoop & Hive Cluster Results",
+        "📚 Project & Big Data Architecture"
     ]
 )
 
@@ -145,9 +146,9 @@ tariff_eur = st.sidebar.slider(
 
 st.sidebar.markdown("---")
 st.sidebar.caption(
-    "**Project Team (Batch 13):**\n"
-    "- Praveen Sagar.M (814724104117)\n"
-    "- Naveen.S (814724104104)\n\n"
+    "**Project Team (Batch 30):**\n"
+    "- Vaibhav (AP23110010425)\n"
+    "- Saubhagya Kashyap (AP23110010439)\n\n"
     "**Course:** Big Data Analytics (BDA)"
 )
 
@@ -359,7 +360,7 @@ elif nav_choice == "🔍 Deep-Dive Consumption Analysis":
         fig_pie.update_traces(textposition="inside", textinfo="percent+label")
         fig_pie.update_layout(height=380, margin=dict(l=20, r=20, t=20, b=20), showlegend=False)
         st.plotly_chart(fig_pie, use_container_width=True)
-        st.caption("Sub 3 (Climate Control & Water Heating) is the dominant sub-metered thermal circuit, consuming ~31.8% of total household energy.")
+        st.caption("Sub 3 (Climate Control & Water Heating) is the dominant sub-metered thermal circuit, consuming ~35.5% of total household energy.")
 
     st.markdown("---")
     st.markdown("#### **Diurnal Load Curves Across Days of the Week**")
@@ -523,15 +524,17 @@ elif nav_choice == "🌿 Sustainability & SDG 7 Insights":
     st.markdown('<div class="main-title">🌿 Sustainability & UN SDG 7 Insights</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-title">Data-driven peak shaving, demand-side management, and statistical energy waste identification</div>', unsafe_allow_html=True)
 
+    _hour_kw = hourly_df.groupby("Hour")["Avg_power_kW"].mean()
+    _hour_kwh = hourly_df.groupby("Hour")["Energy_kWh"].sum()
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Peak Stress Hours", "18:00 – 21:00", delta="Average 2.12 kW")
+        st.metric("Peak Stress Hours", "18:00 – 21:00", delta=f"Average {_hour_kw.loc[18:21].mean():.2f} kW")
     with col2:
-        st.metric("Off-Peak Valley", "01:00 – 05:00", delta="Average 0.48 kW")
+        st.metric("Off-Peak Valley", "01:00 – 05:00", delta=f"Average {_hour_kw.loc[1:5].mean():.2f} kW")
     with col3:
-        st.metric("Peak-to-Average Ratio", "4.4x", delta="Severe grid stress")
+        st.metric("Peak-to-Trough Ratio", f"{_hour_kw.max() / _hour_kw.min():.1f}x", delta="Busiest hour vs quietest hour")
     with col4:
-        st.metric("Est. Annual Shifting Saving", "€280 – €420", delta="Under Time-of-Use Tariff")
+        st.metric("Energy Used 18:00 – 23:59", f"{_hour_kwh.loc[18:23].sum() / _hour_kwh.sum() * 100:.1f}%", delta="Largest time-of-day band")
 
     st.markdown("---")
 
@@ -603,17 +606,85 @@ elif nav_choice == "🌿 Sustainability & SDG 7 Insights":
         st.write("Shift major washing machine, tumble dryer, and dishwasher cycles to the **01:00 – 05:00** nocturnal window using delayed-start timers, avoiding peak residential grid congestion.")
     with rec2:
         st.markdown("##### 🌡️ **2. Smart Thermostat Modulation**")
-        st.write("Sub-meter 3 (water heater and climate control) represents **31.8%** of total load. Pre-heating or pre-cooling water and living spaces during off-peak hours cuts peak thermal demand by up to 25%.")
+        st.write("Sub-meter 3 (water heater and climate control) represents **35.5%** of total load. Pre-heating or pre-cooling water and living spaces during off-peak hours cuts peak thermal demand by up to 25%.")
     with rec3:
         st.markdown("##### 💡 **3. Phantom Load Mitigation**")
-        st.write("Over **58.1%** of energy resides in the unmetered remainder (lighting and entertainment standbys). Deploying smart power strips can reduce continuous parasitic base-load by 10–15%.")
+        st.write("About **51.2%** of energy resides in the unmetered remainder (lighting and entertainment standbys). Deploying smart power strips can reduce continuous parasitic base-load by 10–15%.")
+
+# ==============================================================================
+# TAB: HADOOP & HIVE CLUSTER RESULTS
+# ==============================================================================
+elif nav_choice == "🐘 Hadoop & Hive Cluster Results":
+    st.markdown('<div class="main-title">🐘 Hadoop & Hive Cluster Results</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-title">Outputs of the jobs that ran on the single-node Hadoop cluster: MapReduce on YARN and Apache Hive</div>', unsafe_allow_html=True)
+
+    hourly_mr_path = os.path.join("hadoop", "mapreduce_yarn_hourly_output.txt")
+    daily_mr_path = os.path.join("hadoop", "mapreduce_yarn_daily_output.txt")
+
+    st.markdown("### MapReduce job 1: daily energy totals")
+    if os.path.exists(daily_mr_path):
+        mr_daily = pd.read_csv(daily_mr_path, sep="\t", header=None, names=["Date", "Energy_kWh", "Readings"])
+        mr_daily["Date_ISO"] = pd.to_datetime(mr_daily["Date"], format="%d/%m/%Y").dt.strftime("%Y-%m-%d")
+        merged = mr_daily.merge(daily_df[["Date_ISO", "Energy_kWh"]], on="Date_ISO", suffixes=("_mr", "_pipeline"))
+        diff = (merged["Energy_kWh_mr"] - merged["Energy_kWh_pipeline"]).abs()
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Days produced by the reducer", f"{len(mr_daily):,}")
+        c2.metric("Readings aggregated", f"{int(mr_daily['Readings'].sum()):,}")
+        c3.metric("Days matching the pipeline table", f"{len(merged):,}")
+        c4.metric("Largest difference", f"{diff.max():.4f} kWh")
+    else:
+        st.info("Run `bash run_on_mac.sh` to produce the MapReduce output.")
+
+    st.markdown("### MapReduce job 2: hour-of-day load profile")
+    if os.path.exists(hourly_mr_path):
+        mr_hourly = pd.read_csv(hourly_mr_path, sep="\t", header=None,
+                                names=["Hour", "Total_kWh", "Readings", "Avg_Power_kW", "Peak_Power_kW"]).sort_values("Hour")
+        fig_h = go.Figure()
+        fig_h.add_trace(go.Bar(x=mr_hourly["Hour"], y=mr_hourly["Avg_Power_kW"], name="Average power (kW)", marker_color="#0f766e"))
+        fig_h.add_trace(go.Scatter(x=mr_hourly["Hour"], y=mr_hourly["Peak_Power_kW"], name="Peak power (kW)",
+                                   mode="lines+markers", line=dict(color="#f97316", width=2), yaxis="y2"))
+        fig_h.update_layout(
+            height=380, margin=dict(l=20, r=20, t=30, b=20),
+            xaxis=dict(title="Hour of day", dtick=1),
+            yaxis=dict(title="Average power (kW)"),
+            yaxis2=dict(title="Peak power (kW)", overlaying="y", side="right", showgrid=False),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        st.plotly_chart(fig_h, use_container_width=True)
+        top = mr_hourly.sort_values("Avg_Power_kW", ascending=False).iloc[0]
+        low = mr_hourly.sort_values("Avg_Power_kW").iloc[0]
+        st.caption(f"Highest average demand at {int(top['Hour']):02d}:00 ({top['Avg_Power_kW']:.2f} kW); "
+                   f"lowest at {int(low['Hour']):02d}:00 ({low['Avg_Power_kW']:.2f} kW). "
+                   f"Computed by Hadoop Streaming over {int(mr_hourly['Readings'].sum()):,} readings.")
+    else:
+        st.info("Run `bash run_on_mac.sh` to produce the hour-of-day MapReduce output.")
+
+    st.markdown("### Apache Hive query results")
+    hive_dir = os.path.join("hive", "cluster_results")
+    hive_report = os.path.join("hive", "hive_cluster_report.md")
+    hive_files = sorted(f for f in os.listdir(hive_dir) if f.endswith(".csv")) if os.path.isdir(hive_dir) else []
+    if hive_files:
+        titles = {}
+        if os.path.exists(hive_report):
+            with open(hive_report, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.startswith("## Query "):
+                        num, _, title = line[len("## Query "):].strip().partition(": ")
+                        titles[f"q{int(num):02d}.csv"] = f"Q{num}: {title}"
+        choice = st.selectbox("Query executed on HiveServer2 (MapReduce engine on YARN)", hive_files,
+                              format_func=lambda f: titles.get(f, f))
+        res = pd.read_csv(os.path.join(hive_dir, choice))
+        st.dataframe(res, use_container_width=True, hide_index=True, height=min(420, 60 + 35 * len(res)))
+        st.caption(f"{len(res):,} rows returned by Hive. Source file: `hive/cluster_results/{choice}`")
+    else:
+        st.info("Run `bash run_on_mac.sh` to execute the HiveQL queries on the Hive server.")
 
 # ==============================================================================
 # TAB 5: ACADEMIC & ARCHITECTURE PORTFOLIO
 # ==============================================================================
-elif nav_choice == "📚 Academic & Big Data Architecture":
-    st.markdown('<div class="main-title">📚 Academic Portfolio & Big Data Architecture</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-title">Big Data Analytics Mini Project — Complete Technical Verification & Syllabus Implementation</div>', unsafe_allow_html=True)
+elif nav_choice == "📚 Project & Big Data Architecture":
+    st.markdown('<div class="main-title">📚 Project Details & Big Data Architecture</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-title">Batch 30 Big Data course project: what runs where, and how the pieces connect</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns([1, 1])
 
@@ -622,54 +693,54 @@ elif nav_choice == "📚 Academic & Big Data Architecture":
         st.markdown("""
         - **Project Title:** Smart Energy Consumption Analytics & Forecasting
         - **Academic Subject:** Big Data Analytics (BDA)
-        - **Batch Number:** **Batch 13**
+        - **Batch Number:** **Batch 30**
         - **Team Members:**
-          - **Praveen Sagar.M** — Register No: `814724104117`
-          - **Naveen.S** — Register No: `814724104104`
+          - **Vaibhav** — Roll No: `AP23110010425`
+          - **Saubhagya Kashyap** — Roll No: `AP23110010439`
         - **Target SDG:** **UN SDG 7 — Affordable and Clean Energy (Level 3)**
-        - **Target GitHub Repository:** [`Praveensagar07/Smart-Energy-Analytics-Forecasting`](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting)
-        - **Live Deployed Application:** [`smart-energy-analytics-forecast.streamlit.app`](https://smart-energy-analytics-forecast.streamlit.app/)
+        - **Source code:** [`vaibhavv-x/Smart-Energy-Analytics-`](https://github.com/vaibhavv-x/Smart-Energy-Analytics-)
         """)
 
-        st.markdown("### **Verified Implementation Matrix**")
+        st.markdown("### **What Runs Where**")
         st.markdown("""
-        | Big Data Component | Implementation Technology | Acceptance Status |
+        | Component | Technology | How it runs |
         |---|---|---|
-        | **Distributed Storage** | HDFS `/smart-energy/raw`, `/hive` | **PASS (CLI Scripts)** |
-        | **MapReduce** | Hadoop Streaming Python Mapper & Reducer | **PASS (Verified $< 10^{-4}$ kWh)** |
-        | **Data Warehouse** | Apache HiveQL (8 Analytical Queries) | **PASS (Executed via Spark SQL)** |
-        | **Feature Engineering** | PySpark SQL Windowing (Zero Leakage) | **PASS (1,413 Days, 15 Features)** |
-        | **Machine Learning** | Spark MLlib (Linear Regression, Random Forest) | **PASS (RMSE: 5.16 kWh, R²: 0.4836)** |
-        | **Business Intelligence**| Microsoft Power BI (Star Schema CSVs) | **PASS (5 Export Tables)** |
-        | **Web Application** | Streamlit Community Cloud & Plotly | **PASS (Interactive Web App)** |
-        | **Automated Testing** | Pytest Suite & GitHub Actions CI | **PASS (24 / 24 Tests Passing)** |
+        | **Storage** | Hadoop HDFS | Single-node cluster; raw file, cleaned tables, features and Hive warehouse under `/smart-energy` |
+        | **Batch jobs** | Hadoop MapReduce on YARN | Two Hadoop Streaming jobs over 2.07 million rows: daily totals and hour-of-day load profile |
+        | **Data warehouse** | Apache Hive (HiveServer2) | ORC and Parquet tables; 12 HiveQL queries executed as MapReduce jobs on YARN |
+        | **Feature engineering** | PySpark window functions | Reads the cleaned table from HDFS; 15 leak-free features |
+        | **Machine learning** | Spark MLlib | Linear Regression and Random Forest against a naive baseline |
+        | **Visualization** | Streamlit, Plotly, Matplotlib | This dashboard and four report figures |
+        | **Testing** | pytest | 35 automated tests |
         """)
 
     with col2:
-        st.markdown("### **End-to-End System Architecture**")
+        st.markdown("### **End-to-End Architecture**")
         st.code("""
-Raw Ingestion (clean_data.py: 2.075M rows)
+UCI raw file (2,075,259 one-minute readings)
        │
        ▼
-HDFS Directory Storage (/smart-energy/...)
+HDFS  /smart-energy/raw
        │
-       ├───────────────────────────────┐
-       ▼                               ▼
-Hadoop MapReduce (Streaming)     HiveQL Analytics Engine (8 Queries)
-       │                               │
-       └───────────────┬───────────────┘
-                       ▼
-       PySpark Feature Pipeline (Windowing Lags & Rolling Stats)
-                       │
-                       ▼
-       Spark MLlib Predictive Modeling (Baseline, LR, RF)
-                       │
-                       ▼
-       Power BI Star Schema & Interactive Streamlit Dashboard
+       ├──────────────────────────────┬─────────────────────────┐
+       ▼                              ▼                         ▼
+MapReduce on YARN              Cleaning (pandas)          Hive external table
+ - daily totals                daily + hourly tables       over the raw file
+ - hour-of-day profile                │
+                                      ▼
+                         HDFS  /smart-energy/cleaned
+                                      │
+                 ┌────────────────────┴───────────────────┐
+                 ▼                                        ▼
+   Hive warehouse (ORC / Parquet)            PySpark feature pipeline
+   12 HiveQL queries on YARN                 HDFS /smart-energy/features
+                                                          │
+                                                          ▼
+                                         Spark MLlib (baseline, LR, RF)
+                                                          │
+                                                          ▼
+                                     Streamlit dashboard and report figures
         """, language="text")
-
-        st.markdown("### **Automated Test Suite (Pytest)**")
-        st.success("✅ **24 / 24 Unit Tests Passing** across preprocessing, MapReduce streaming, data leakage prevention, ML prediction validity, and Power BI schema integrity.")
 
 # ==============================================================================
 # FOOTER
@@ -677,8 +748,8 @@ Hadoop MapReduce (Streaming)     HiveQL Analytics Engine (8 Queries)
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: #64748b; font-size: 0.85rem;'>"
-    "Smart Energy Consumption Analytics & Forecasting | Academic Batch 13 | Big Data Analytics (BDA)<br/>"
-    "Developed by Praveen Sagar.M & Naveen.S | Aligned with UN Sustainable Development Goal 7"
+    "Smart Energy Consumption Analytics & Forecasting | Batch 30 | Big Data Analytics<br/>"
+    "Developed by Vaibhav & Saubhagya Kashyap | Aligned with UN Sustainable Development Goal 7"
     "</div>",
     unsafe_allow_html=True
 )

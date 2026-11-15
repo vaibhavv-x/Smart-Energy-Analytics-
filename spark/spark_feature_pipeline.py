@@ -15,12 +15,10 @@ import os
 import sys
 
 # Configure environment
-os.environ.setdefault("JAVA_HOME", r"C:\Users\PRAVEENRAJ\jdk-17\jdk-17.0.14+7")
-os.environ.setdefault("HADOOP_HOME", r"C:\hadoop")
-java_bin = os.path.join(os.environ["JAVA_HOME"], "bin")
-hadoop_bin = os.path.join(os.environ["HADOOP_HOME"], "bin")
-path_sep = ";" if os.name == "nt" else ":"
-os.environ["PATH"] = f"{java_bin}{path_sep}{hadoop_bin}{path_sep}{os.environ.get('PATH', '')}"
+# Put JAVA_HOME/bin and HADOOP_HOME/bin on PATH when those variables are set.
+for _var in ("JAVA_HOME", "HADOOP_HOME"):
+    if os.environ.get(_var):
+        os.environ["PATH"] = os.path.join(os.environ[_var], "bin") + os.pathsep + os.environ.get("PATH", "")
 os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
@@ -40,10 +38,15 @@ def run_feature_pipeline(input_csv: str = None, output_dir: str = None):
         .config("spark.driver.host", "127.0.0.1") \
         .config("spark.driver.bindAddress", "127.0.0.1") \
         .config("spark.driver.memory", "1g") \
+        .config("spark.hadoop.dfs.replication", "1") \
         .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    df = spark.read.csv(input_csv, header=True, inferSchema=True)
+    # When SMART_ENERGY_HDFS_URI is set, Spark reads the cleaned daily table from HDFS.
+    hdfs_uri = os.environ.get("SMART_ENERGY_HDFS_URI", "").rstrip("/")
+    source = f"{hdfs_uri}/cleaned/daily" if hdfs_uri else input_csv
+    print(f"[*] Reading daily table from: {source}")
+    df = spark.read.csv(source, header=True, inferSchema=True)
     df_valid = df.filter(F.col("Is_valid_day") == 1).sort("Date_ISO")
     total_valid = df_valid.count()
     print(f"[*] Loaded {total_valid} valid daily observations.")
@@ -106,6 +109,11 @@ def run_feature_pipeline(input_csv: str = None, output_dir: str = None):
         "Year"
     ]
     df_final = df_clean_feat.select(*feature_cols)
+
+    if hdfs_uri:
+        features_uri = f"{hdfs_uri}/features/daily_energy_features"
+        df_final.coalesce(1).write.mode("overwrite").parquet(features_uri)
+        print(f"[+] Feature matrix written to HDFS as Parquet: {features_uri}")
 
     csv_out = os.path.join(output_dir, "daily_energy_features.csv")
     pdf = df_final.toPandas()
