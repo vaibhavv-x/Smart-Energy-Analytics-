@@ -17,8 +17,7 @@
 
 - **Course**: Big Data
 - **Target Sustainable Development Goal**: **UN SDG 7 — Affordable and Clean Energy**
-- **Based on**: [Praveensagar07/Smart-Energy-Analytics-Forecasting](https://github.com/Praveensagar07/Smart-Energy-Analytics-Forecasting) by Praveen Sagar M and Naveen S, used under the MIT licence (see [LICENSE](LICENSE)). The analysis pipeline, dashboard and documentation come from that project.
-- **Our additions**: single-node Hadoop setup for macOS and a full-dataset MapReduce run on YARN ([run_on_mac.sh](run_on_mac.sh)). See [FEATURES.md](FEATURES.md) and [TODO.md](TODO.md).
+
 
 ## Run it on a Mac
 
