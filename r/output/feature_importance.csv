@@ -1,0 +1,16 @@
+"feature","pct_increase_mse"
+"rolling_mean_7_kwh",18.11
+"lag_1_energy_kwh",16.17
+"lag_1_avg_power_kw",15.04
+"lag_2_energy_kwh",13.8
+"rolling_mean_14_kwh",13.61
+"month_num",13.43
+"lag_1_sub3_kwh",13.39
+"day_of_week_num",12.88
+"lag_1_max_power_kw",12.31
+"is_weekend",12.12
+"lag_7_energy_kwh",8.77
+"lag_1_sub2_kwh",7.67
+"rolling_std_7_kwh",7.43
+"lag_1_avg_voltage_v",6.87
+"lag_1_sub1_kwh",4.95

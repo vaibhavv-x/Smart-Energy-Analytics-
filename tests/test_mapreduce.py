@@ -5,7 +5,7 @@ Automated Unit Tests: Hadoop Streaming Mapper and Reducer Logic
 import sys
 import subprocess
 import pytest
-import numpy as np
+import math
 
 def run_script(script_path, input_text):
     proc = subprocess.Popen(
@@ -26,7 +26,7 @@ def test_mapper_valid_row():
     parts = stdout.strip().split("\t")
     assert len(parts) == 3
     assert parts[0] == "16/12/2006"
-    assert np.isclose(float(parts[1]), 4.216 / 60.0, atol=1e-5)
+    assert math.isclose(float(parts[1]), 4.216 / 60.0, abs_tol=1e-5)
     assert parts[2] == "1"
 
 def test_mapper_header_skipping():
@@ -52,7 +52,7 @@ def test_reducer_single_date_aggregation():
     assert parts[0] == "16/12/2006"
     total_energy = float(parts[1])
     count = int(parts[2])
-    assert np.isclose(total_energy, 0.070267 + 0.089333 + 0.089567, atol=1e-4)
+    assert math.isclose(total_energy, 0.070267 + 0.089333 + 0.089567, abs_tol=1e-4)
     assert count == 3
 
 def test_reducer_multi_date_aggregation():
@@ -87,8 +87,8 @@ def test_end_to_end_mapreduce_pipeline():
     assert code_r == 0
 
     results = {l.split("\t")[0]: float(l.split("\t")[1]) for l in out_r.strip().split("\n")}
-    assert np.isclose(results["16/12/2006"], 0.20, atol=1e-3)
-    assert np.isclose(results["17/12/2006"], 0.20, atol=1e-3)
+    assert math.isclose(results["16/12/2006"], 0.20, abs_tol=1e-3)
+    assert math.isclose(results["17/12/2006"], 0.20, abs_tol=1e-3)
 
 
 # ------------------------------------------------------------------------------
@@ -102,8 +102,8 @@ def test_hourly_mapper_emits_hour_key():
     assert code == 0
     parts = stdout.strip().split("\t")
     assert parts[0] == "17"
-    assert np.isclose(float(parts[1]), 4.216 / 60.0, atol=1e-5)
-    assert np.isclose(float(parts[2]), 4.216, atol=1e-3)
+    assert math.isclose(float(parts[1]), 4.216 / 60.0, abs_tol=1e-5)
+    assert math.isclose(float(parts[2]), 4.216, abs_tol=1e-3)
 
 
 def test_hourly_mapper_skips_header_and_missing():
@@ -125,7 +125,7 @@ def test_hourly_reducer_average_and_peak():
     rows = [r.split("\t") for r in stdout.strip().split("\n")]
     assert len(rows) == 2
     assert rows[0][0] == "07" and rows[0][2] == "2"
-    assert np.isclose(float(rows[0][1]), 0.06, atol=1e-4)
-    assert np.isclose(float(rows[0][3]), 1.8, atol=1e-3)
-    assert np.isclose(float(rows[0][4]), 2.4, atol=1e-3)
-    assert rows[1][0] == "18" and np.isclose(float(rows[1][4]), 6.0, atol=1e-3)
+    assert math.isclose(float(rows[0][1]), 0.06, abs_tol=1e-4)
+    assert math.isclose(float(rows[0][3]), 1.8, abs_tol=1e-3)
+    assert math.isclose(float(rows[0][4]), 2.4, abs_tol=1e-3)
+    assert rows[1][0] == "18" and math.isclose(float(rows[1][4]), 6.0, abs_tol=1e-3)

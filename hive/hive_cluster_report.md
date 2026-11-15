@@ -4,18 +4,20 @@ Executed through HiveServer2 (`jdbc:hive2://localhost:10000`) with the MapReduce
 
 | Query | Rows | Seconds |
 |---|---|---|
-| Q1: Daily Electricity Consumption Time-Series | 1420 | 21.1 |
-| Q2: Monthly Electricity Consumption Aggregations | 48 | 42.9 |
-| Q3: Average Hourly Consumption Profile (24-Hour Diurnal Cycle) | 24 | 44.8 |
-| Q4: Peak Consumption Hours Identification | 5 | 41.9 |
-| Q5: Top 10 Highest Consumption Dates (Historical Peaks) | 10 | 20.8 |
-| Q6: Weekday versus Weekend Energy Usage Patterns | 2 | 21.6 |
-| Q7: Seasonal Monthly Energy Trends | 12 | 42.9 |
-| Q8: Sub-Metering End-Use Distribution & Breakdown | 1 | 21.8 |
-| Q9: Year-on-Year Change in Monthly Consumption | 36 | 90.6 |
-| Q10: Share of High-Consumption Days (above 40 kWh) per Year | 5 | 43.9 |
-| Q11: Consumption by Time-of-Day Band | 4 | 64.9 |
-| Q12: Data Quality per Year on the Raw Table (2,075,259 rows in HDFS) | 5 | 46.0 |
+| Q1: Daily Electricity Consumption Time-Series | 1420 | 22.0 |
+| Q2: Monthly Electricity Consumption Aggregations | 48 | 42.7 |
+| Q3: Average Hourly Consumption Profile (24-Hour Diurnal Cycle) | 24 | 43.7 |
+| Q4: Peak Consumption Hours Identification | 5 | 46.7 |
+| Q5: Top 10 Highest Consumption Dates (Historical Peaks) | 10 | 23.6 |
+| Q6: Weekday versus Weekend Energy Usage Patterns | 2 | 22.7 |
+| Q7: Seasonal Monthly Energy Trends | 12 | 43.4 |
+| Q8: Sub-Metering End-Use Distribution & Breakdown | 1 | 25.3 |
+| Q9: Year-on-Year Change in Monthly Consumption | 36 | 84.0 |
+| Q10: Share of High-Consumption Days (above 40 kWh) per Year | 5 | 41.5 |
+| Q11: Consumption by Time-of-Day Band | 4 | 63.8 |
+| Q12: Data Quality per Year on the Raw Table (2,075,259 rows in HDFS) | 5 | 45.5 |
+
+The forecasting feature table (`daily_features`, 1413 rows) is exported to `hive/cluster_results/daily_features.csv` for the R scripts.
 
 ## Query 1: Daily Electricity Consumption Time-Series
 
@@ -104,7 +106,7 @@ hour_of_day,avg_hourly_energy_kwh,avg_power_kw,avg_voltage_v
 5,0.4537,0.4537,242.09
 6,0.7916,0.7916,241.94
 7,1.5016,1.5024,239.92
-8,1.4606,1.461,239.5
+8,1.4606,1.4609,239.5
 9,1.3316,1.3316,239.42
 ```
 
@@ -130,7 +132,7 @@ hour_of_day,avg_hourly_energy_kwh,peak_recorded_hourly_kwh,avg_power_demand_kw
 21,1.8744,6.3639,1.8761
 19,1.7318,6.496,1.7334
 7,1.5016,4.4166,1.5024
-8,1.4606,4.4189,1.461
+8,1.4606,4.4189,1.4609
 ```
 
 ## Query 5: Top 10 Highest Consumption Dates (Historical Peaks)
@@ -340,8 +342,8 @@ Result file: `hive/cluster_results/q11.csv` (4 rows). First rows:
 band,total_kwh,avg_power_kw,share_pct
 1 Night (00-05),4301.19,0.5037,11.54
 2 Morning (06-11),10791.77,1.2657,28.94
-3 Afternoon (12-17),9145.65,1.0716,24.53
-4 Evening (18-23),13045.14,1.5251,34.99
+3 Afternoon (12-17),9145.65,1.0717,24.53
+4 Evening (18-23),13045.14,1.5252,34.99
 ```
 
 ## Query 12: Data Quality per Year on the Raw Table (2,075,259 rows in HDFS)

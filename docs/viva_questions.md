@@ -1,139 +1,123 @@
-# Comprehensive Academic Viva Questions & Technical Answers
+# Viva Questions and Answers
 
-## Smart Energy Consumption Analytics & Forecasting
-**Subject**: Big Data Analytics (BDA)  
-**Batch**: 30  
-**Team Members**: Vaibhav (AP23110010425) & Saubhagya Kashyap (AP23110010439)
+**Smart Energy Analytics, Batch 30** — Vaibhav (AP23110010425) and Saubhagya Kashyap (AP23110010439)
 
----
+## Project
 
-### 1. Big Data Architecture & Core Syllabus (Hadoop, HDFS, MapReduce, Hive)
+**1. What is the project in one sentence?**
+We store four years of one-minute electricity readings from one household in HDFS, aggregate them with MapReduce, preprocess and query them in Hive, and forecast and plot the results in R.
 
-#### Q1. What is the fundamental architecture of the Hadoop Distributed File System (HDFS)?
-**Answer**: HDFS employs a master/slave architecture consisting of a single **NameNode** (master daemon managing directory namespace, file metadata, and block locations) and multiple **DataNodes** (worker daemons managing actual 128 MB data storage blocks). HDFS ensures fault tolerance through automatic triplication of blocks across separate physical rack topologies.
+**2. Which Hadoop ecosystem tools did you use, and for what?**
+HDFS stores the raw file and the Hive tables. MapReduce on YARN runs two aggregation jobs. Hive does the preprocessing, twelve analysis queries and the feature engineering. R does the forecasting and all the graphs.
 
-#### Q2. Why is Hadoop MapReduce suitable for aggregating high-frequency smart meter readings?
-**Answer**: MapReduce employs the "data locality" principle—moving compute logic to data rather than shifting massive dataset blocks across the network. The mapper converts raw minute-level electrical power readings into kilowatt-hour interval slices in parallel across partitions, while the shuffle/sort barrier groups records by date key, allowing reducers to perform deterministic linear summations in $O(N)$ time.
+**3. Did you use Spark or PySpark?**
+No. There is no Spark in the project. The MapReduce mappers and reducers are plain Python scripts run by Hadoop Streaming, which is MapReduce, not PySpark.
 
-#### Q3. How does Hadoop Streaming work in your project implementation?
-**Answer**: Hadoop Streaming utilizes standard UNIX input/output streams (`stdin` / `stdout`). The Hadoop Java wrapper executes our Python mapper script, feeds lines of text via `stdin`, receives tab-separated key-value pairs (`Date \t Energy_kWh \t 1`) from `stdout`, sorts them by key in the MapReduce framework, and streams them into our Python reducer script to compute daily totals.
+**4. What is the dataset?**
+The UCI Individual Household Electric Power Consumption dataset: 2,075,259 one-minute readings from one home near Paris, December 2006 to November 2010, 126.8 MB. Each row has the date, time, active power, reactive power, voltage, current and three sub-meters.
 
-#### Q4. What is Hive, and how does it translate SQL into Big Data execution plans?
-**Answer**: Apache Hive is a distributed data warehouse built on top of Hadoop that provides SQL-like querying (HiveQL). The Hive compiler parses SQL queries, generates an Abstract Syntax Tree (AST), validates schemas against the **Hive Metastore**, optimizes the physical execution graph using cost-based optimizers (Calcite), and generates MapReduce, Tez, or Spark jobs.
+**5. Is this big data?**
+Not by volume: 126.8 MB fits in one HDFS block. We use it to demonstrate the full workflow on a real dataset. The same jobs and queries would run unchanged on a larger file and more nodes.
 
-#### Q5. What is the difference between an External Table and an Internal (Managed) Table in Hive?
-**Answer**: In a **Managed Table**, Hive controls both metadata and underlying physical data files; dropping the table deletes both metadata and files on HDFS. In an **External Table** (which we used for raw staging `/smart-energy/raw`), Hive manages only schema metadata; dropping the external table preserves the original underlying dataset files on HDFS.
+## HDFS and YARN
 
----
+**6. How is the cluster set up?**
+A single-node (pseudo-distributed) Hadoop 3.3.6 cluster: one NameNode and one DataNode for HDFS, one ResourceManager and one NodeManager for YARN, replication factor 1.
 
-### 2. Apache Spark & PySpark Analytics
+**7. What do the NameNode and DataNode do?**
+The NameNode keeps the file system's metadata: the directory tree and which blocks make up each file. The DataNode stores the blocks themselves. A client asks the NameNode where a file's blocks are and reads them from the DataNodes.
 
-#### Q6. Why is Apache Spark substantially faster than traditional MapReduce for feature engineering?
-**Answer**: Spark executes computations **in-memory** using Resilient Distributed Datasets (RDDs) and Catalyst DataFrames, avoiding costly intermediate disk I/O between iterative stages. MapReduce forces a full write of shuffle outputs to local disk and HDFS between stages, creating significant disk serialization bottlenecks.
+**8. What is the block size, and how many blocks does your file use?**
+128 MB by default. The file is 126.8 MB, so it uses one block.
 
-#### Q7. What is the role of Spark's Catalyst Optimizer and Tungsten Execution Engine?
-**Answer**: The **Catalyst Optimizer** automatically optimizes relational query trees through rule-based and cost-based optimizations (predicate pushdown, constant folding, projection pruning). The **Tungsten Engine** provides off-heap memory management and whole-stage code generation, compiling complex DataFrame query pipelines into optimized JVM bytecode to bypass Java object overhead.
+**9. Why replication factor 1?**
+There is only one DataNode, so there is nowhere to put a second copy. A real cluster uses 3.
 
-#### Q8. Where does Spark read its data from in this project, and where does it run?
-**Answer**: Spark reads the cleaned daily and hourly tables from HDFS (`hdfs://localhost:9000/smart-energy/cleaned`) and writes the feature table back to HDFS as Parquet (`/smart-energy/features`); the MLlib training job reads that Parquet file. The Spark session itself runs in local mode on the same machine, not on YARN, because the cleaned tables are small (1,433 daily rows and 34,168 hourly rows).
+**10. What does YARN do?**
+It manages the cluster's resources. The ResourceManager accepts jobs and allocates containers; the NodeManager starts the containers on its machine. Each MapReduce job gets an ApplicationMaster container that requests containers for its map and reduce tasks.
 
----
+## MapReduce
 
-### 3. Machine Learning, Time-Series & Leakage Prevention
+**11. Explain your two MapReduce jobs.**
+Job 1: the mapper emits `date, kWh, 1` for every valid reading, and the reducer sums the energy and counts the readings for each date (1,433 days). Job 2: the mapper emits `hour, kWh, kW`, and the reducer returns the total energy, reading count, average power and peak power for each of the 24 hours.
 
-#### Q9. What is Data Leakage in time-series forecasting, and how was it prevented in your pipeline?
-**Answer**: Data leakage occurs when predictor features inadvertently expose information from the target timestamp $t$ or future timestamps ($t+k$). We prevented leakage by computing rolling statistical windows strictly backwards over preceding rows (`rowsBetween(-W, -1)`) and using lagged predictors ($\text{Lag}_1 = y_{t-1}, \text{Lag}_7 = y_{t-7}$), strictly excluding the current day's consumption $y_t$ from its own feature vector.
+**12. What happens between the mapper and the reducer?**
+The shuffle and sort. Hadoop partitions the mapper's output by key, sorts it, and delivers all the values of one key to the same reducer, in key order. That is why the reducer can detect a new key by comparing it with the previous one.
 
-#### Q10. Why is random K-Fold Cross-Validation invalid for time-series forecasting?
-**Answer**: Time-series observations are non-independent and follow strict temporal autocorrelation ($y_t$ depends on $y_{t-1}$). Random k-fold cross-validation shuffles observations, using future data points to predict past dates, violating physical causality and producing artificially optimistic, non-generalizable accuracy metrics. A **strict chronological train/validation/test split** is mandatory.
+**13. What is Hadoop Streaming?**
+A utility that lets any program be a mapper or reducer. Hadoop writes input lines to the program's standard input and reads tab-separated key-value lines from its standard output.
 
-#### Q11. What is the Naive Persistence Baseline model and why is it essential?
-**Answer**: The Naive Persistence model predicts tomorrow's consumption as today's consumption ($\hat{y}_{t+1} = y_t$). It serves as the baseline ground truth: any complex machine learning algorithm (Linear Regression, Random Forest) is only considered practically valuable if it demonstrably beats the persistence baseline on out-of-sample RMSE and MAE.
+**14. How many map and reduce tasks ran?**
+Two map tasks and one reduce task for each job.
 
-#### Q12. Why did Random Forest Regression outperform Linear Regression in your experiments?
-**Answer**: Household electrical consumption contains complex, non-linear interactions between seasonal calendar variables (summer vs. winter), day-of-week occupancy shifts (weekdays vs. weekends), and electrical baseload standard deviations. Linear regression assumes linear additivity, whereas Random Forest constructs an ensemble of de-correlated decision trees capable of partitioning non-linear feature sub-spaces.
+**15. How do you know the MapReduce results are correct?**
+Hive computes the same daily energy from the same raw file with a completely different engine path. The two agree on all 1,420 valid days to within 0.001 kWh, with identical reading counts. A test checks this automatically.
 
-#### Q13. Explain the difference between MAE, RMSE, and $R^2$.
-**Answer**:
-- **MAE (Mean Absolute Error)** measures the average magnitude of absolute errors in physical units (kWh) with linear weighting.
-- **RMSE (Root Mean Squared Error)** squares individual errors before averaging, penalizing large outlier errors heavily.
-- **$R^2$ (Coefficient of Determination)** indicates the proportion of variance in electricity consumption explained by model features relative to a simple horizontal mean line ($R^2 \in (-\infty, 1]$).
+## Hive
 
----
+**16. What is Hive, and how does it run a query?**
+A data warehouse on Hadoop. Tables are files in HDFS and their definitions are in the metastore. Hive parses a HiveQL query, plans it, and compiles it into jobs for its execution engine, here MapReduce on YARN.
 
-### 4. Dataset Characteristics & Physics
+**17. What is the difference between an external and a managed table?**
+Dropping a managed table deletes its data; dropping an external table only removes the definition. Our raw table is external, because the file in `/smart-energy/raw` is the source data and must not be deleted. The daily and hourly tables are managed.
 
-#### Q14. What are the physical units in the UCI Household Power Consumption dataset, and how were they converted?
-**Answer**:
-- `Global_active_power` is recorded in **kilowatts (kW)** (instantaneous power). Energy in kilowatt-hours (kWh) for a 1-minute interval is calculated as: $\text{Energy} = P \times (1/60 \text{ hr})$.
-- `Sub_metering_1`, `Sub_metering_2`, and `Sub_metering_3` are recorded in **Watt-hours (Wh)**. They are converted to kWh via division by 1,000 ($\text{kWh} = \text{Wh} / 1000$).
+**18. Why is the daily table partitioned by year?**
+Each year is stored in its own folder (`year_num=2007`, …). A query that filters on the year reads only that folder. We load it with dynamic partitioning, where Hive derives the partition from a column of the data.
 
-#### Q15. What do the three electrical sub-meters represent?
-**Answer**:
-- **Sub-metering 1**: Kitchen appliances (dishwasher, microwave, electric oven).
-- **Sub-metering 2**: Laundry room (washing machine, tumble dryer, refrigerator, light).
-- **Sub-metering 3**: Climate control and hot water (electric water heater and air conditioner).
+**19. Why ORC and Parquet?**
+Both are columnar formats: they store each column together, compress well, and let a query read only the columns it needs. We used ORC for the daily table and Parquet for the hourly table to show both.
 
-#### Q16. How did your pipeline handle missing values (`?`) in the dataset?
-**Answer**: Missing values constitute 1.25% (25,979 minutes) of readings. Rather than fabricating or linearly interpolating extended sensor downtime (which distorts true variance and creates artificial consumption), invalid records were excluded from minute summations, and daily completeness ratios were calculated. Days with completeness $< 85\%$ were flagged as invalid for ML training.
+**20. How is the preprocessing done?**
+In HiveQL, in `hive/build_tables.hql`. Rows with a missing power reading are dropped; power is converted to energy (kW ÷ 60); sub-meters are converted from Wh to kWh; the rows are grouped by date, and by date and hour; and a day is marked valid when at least 85% of its readings are present.
 
----
+**21. Why drop missing readings instead of filling them in?**
+Filling in a missing minute would add energy that was never measured. Only 1.25% of readings are missing, and days with too many missing readings are excluded.
 
-### 5. Dashboard Data Model (Power BI design, Streamlit implementation)
+**22. Why does a Hive query take 20 seconds to 2 minutes on a small table?**
+Every query starts one or more MapReduce jobs, and each job has to start an ApplicationMaster and task containers on YARN. That start-up cost dominates on small data. Tez would be faster.
 
-> The dashboard we run is the Streamlit app. The star-schema tables below are exported as CSV and were designed for Power BI; no Power BI report was built.
+**23. What problems did you face with Hive?**
+Two. First, inserting into the ORC table failed with a protobuf `NoSuchMethodError`, because Hadoop ships protobuf 2.5 and Hive's ORC writer needs version 3; setting `mapreduce.job.user.classpath.first=true` fixed it. Second, the file's header line was being read as a data row, so the queries filter it out with `record_date <> 'Date'`.
 
-#### Q17. What data modeling schema was adopted in Power BI, and why?
-**Answer**: A **Star Schema** was implemented. A centralized date dimension (`dim_calendar`) with a 1-to-many relationship filters three transactional fact tables (`fact_daily_energy`, `fact_hourly_energy`, `fact_forecast_comparison`). Star schemas optimize VertiPaq engine compression, maximize DAX query performance, and eliminate ambiguous circular relationship paths.
+**24. How are the forecasting features built?**
+With window functions in `hive/features.hql`. `LAG` gives the consumption 1, 2 and 7 days earlier. `AVG(...) OVER (ORDER BY consumption_date ROWS BETWEEN 7 PRECEDING AND 1 PRECEDING)` gives the mean of the previous seven days.
 
-#### Q18. What is the purpose of DAX Time Intelligence functions in the dashboard?
-**Answer**: DAX Time Intelligence functions (such as `DATESINPERIOD` and `DATEADD`) allow dynamic calculation of rolling metrics across flexible user-selected date slicers—such as 7-day and 30-day moving averages—to smooth high-frequency daily noise and expose underlying macro energy trends.
+**25. What is data leakage, and how did you avoid it?**
+Leakage is when a feature contains information from the day being predicted, which makes a model look better than it is. Every window ends at `1 PRECEDING`, so it never includes the current day, and a test recomputes the features from earlier days to confirm it.
 
----
+## R
 
-### 6. Sustainability & UN SDG 7 Alignment
+**26. What is R used for?**
+Forecasting (`r/forecast_models.R`) and all twelve graphs (`r/visualize.R`). R reads the CSV results exported from Hive and the MapReduce output.
 
-#### Q19. How does this project directly contribute to UN Sustainable Development Goal 7?
-**Answer**: UN SDG 7 focuses on "Affordable and Clean Energy," specifically Target 7.3 (doubling global energy efficiency). By analyzing diurnal demand patterns and forecasting next-day load, the system empowers grid operators and consumers to perform **demand-side peak shaving** and shift high-energy discretionary activities away from peak stress periods.
+**27. Which models did you train?**
+A naive baseline that predicts yesterday's consumption, linear regression (`lm`), and a random forest of 300 trees (`randomForest`).
 
-#### Q20. What is Peak Shaving and Load Shifting, and what is its quantified impact?
-**Answer**: Our analytical findings demonstrate that household electricity demand peaks between 18:00 and 21:00 (averaging 1.71 kW) and drops to a valley between 01:00 and 05:00 (averaging 0.47 kW). Shifting 15% of flexible appliance loads to off-peak nocturnal hours flattens the household's load curve. How much a household saves depends on its time-of-use tariff; this dataset has no tariff data, so no saving is quantified.
+**28. How did you split the data?**
+By time, never shuffled: the first 989 days for training, the next 211 for validation, the last 213 for testing. Shuffling would let the model train on days after the ones it is tested on.
 
-#### Q21. How were consumption anomalies detected, and why are they relevant to energy waste?
-**Answer**: Anomalies were identified using a statistical threshold: days where consumption exceeded $\mu + 2\sigma$ ($46.2 \text{ kWh}$). Detecting these 49 historical anomaly days alerts consumers to malfunctioning appliances, equipment left on continuously, or insulation degradation.
+**29. What are the results?**
+On the test period the random forest has a mean absolute error of 3.79 kWh and RMSE of 5.09 kWh, against 4.50 and 6.42 for the naive baseline. R² is 0.50.
 
----
+**30. Why is R² only 0.50?**
+One household's daily use depends on things the data does not contain, such as the weather and whether the family is at home. The model captures the level and the season but not single-day spikes.
 
-### 7. Software Engineering & Verification
+**31. What do MAE, RMSE and R² mean?**
+MAE is the average size of the error. RMSE squares the errors first, so large errors count more. R² is the share of the variation in the actual values that the model explains.
 
-#### Q22. How did you verify the mathematical correctness of your MapReduce implementation?
-**Answer**: Two ways. `hadoop/run_mapreduce.py` runs the mapper and reducer on the 5,000-row sample and compares the result with an independent pandas calculation. On the cluster, `run_on_mac.sh` compares the daily totals produced by the YARN job over all 2,075,259 rows with the daily table produced by the cleaning step: all 1,433 days match, with a largest difference of 0.0001 kWh (rounding in the reducer's four-decimal output). `tests/test_cluster_outputs.py` repeats that check automatically.
+**32. Which features matter most?**
+The mean of the previous seven days and the previous day's consumption, followed by the previous day's average power.
 
-#### Q23. What automated tests were implemented, and how does the CI pipeline work?
-**Answer**: A 35-test suite was implemented using `pytest` spanning preprocessing unit conversions, MapReduce streaming boundary conditions, data leakage prevention, chronological splitting, model metric correctness, and Power BI export schema validity. A GitHub Actions workflow (`.github/workflows/ci.yml`) executes these tests automatically on push.
+## Findings
 
----
+**33. What are the main findings?**
+Demand peaks at 20:00 (1.90 kW) and is lowest at 04:00 (0.44 kW). Weekends use 19.1% more than weekdays. December uses 2.6 times as much per day as August. The water heater and air conditioner take 35.5% of the energy, and 51.2% is not sub-metered. The evening carries 35% of the energy.
 
-### 8. Our Cluster Setup (Batch 30 additions)
+**34. What is the practical use?**
+Moving water heating, laundry and dishwashing from the evening peak to the 01:00 to 05:00 valley would flatten the household's load curve, and a next-day forecast helps a utility plan supply.
 
-#### Q24. How is the Hadoop cluster set up, and what exactly runs on it?
-**Answer**: It is a single-node (pseudo-distributed) Hadoop 3.3.6 cluster on a MacBook: one NameNode and one DataNode for HDFS, and one ResourceManager and one NodeManager for YARN, with replication factor 1. Two Hadoop Streaming MapReduce jobs run on YARN over the full 2,075,259-row file: daily energy totals, and the hour-of-day load profile. The 12 HiveQL queries also run as MapReduce jobs on YARN through HiveServer2.
+**35. What are the limitations?**
+Small data on a single node; one household in France; no weather data; Hive on the slow MapReduce engine; and a forecast that explains only half of the daily variation.
 
-#### Q25. What is your second MapReduce job, and what did it find?
-**Answer**: `mapper_hourly.py` keys every valid one-minute reading by its hour of day and emits the interval energy and the power; `reducer_hourly.py` returns total energy, reading count, average power and peak power for each of the 24 hours. It shows demand lowest around 03:00 to 04:00 (about 0.44 kW) and highest around 20:00 to 21:00 (about 1.9 kW).
-
-#### Q26. Is Hive really installed, or is it Spark SQL?
-**Answer**: Both exist. Apache Hive 4.0.1 is installed with HiveServer2 and an embedded Derby metastore. `hive/schema.hql` creates an external table over the raw file in HDFS, a daily table stored as ORC and partitioned by year, and an hourly table stored as Parquet. `hive/load_cleaned_tables.hql` loads them with dynamic partitioning, and `hive/run_hive_on_cluster.py` runs the 12 queries through beeline and saves the results in `hive/cluster_results/`. Separately, `hive/run_hive_analytics.py` runs the same analysis in Spark SQL; the two engines give the same numbers.
-
-#### Q27. Why does a Hive query on a small table take 20 to 90 seconds?
-**Answer**: Hive uses the MapReduce execution engine here. Every aggregation is compiled into one or more MapReduce jobs, and each job has to start an ApplicationMaster and task containers on YARN. That fixed start-up cost dominates on small tables. A query with a join and an ORDER BY (Query 9) needs several jobs in sequence. Tez or Spark as the engine would cut this sharply.
-
-#### Q28. Why did the Hive header row appear as NULL, and how did you fix it?
-**Answer**: The cleaned CSV files have a header line. The table property `skip.header.line.count` was not applied when Hive's MapReduce engine read the files, so the header was parsed as a row of NULLs. The load script now filters it out (`WHERE date_iso <> 'Date_ISO'`), and the raw-table query filters `record_date <> 'Date'`.
-
-#### Q29. What problem did you hit running Hive on Hadoop 3.3.6, and how was it solved?
-**Answer**: The first INSERT into the ORC table failed with `NoSuchMethodError: com.google.protobuf.Internal.checkNotNull`. Hadoop ships protobuf 2.5 while Hive's ORC writer needs protobuf 3, and the Hadoop jar came first on the task classpath. Setting `mapreduce.job.user.classpath.first=true` in `hive-site.xml` puts the job's own jars first and fixes it.
-
-#### Q30. Is 2 million rows really big data?
-**Answer**: No. At 126.8 MB the file fits in one HDFS block. The project demonstrates the full workflow (distributed storage, batch jobs on YARN, a Hive warehouse, Spark features and MLlib models) on a real public dataset, and the same code would run unchanged on a multi-node cluster with a larger file.
-
+**36. What would you do next?**
+Add temperature data, forecast each hour of the next day, use Tez for Hive, and repeat the analysis on a multi-household dataset that needs several blocks and nodes.

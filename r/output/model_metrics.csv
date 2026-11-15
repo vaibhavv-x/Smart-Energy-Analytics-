@@ -1,0 +1,4 @@
+"model","val_rmse","test_mae","test_rmse","test_r2","test_mape_pct","selected"
+"Naive_Baseline",8.4182,4.4998,6.4155,0.2024,19.2,""
+"Linear_Regression",6.2753,4.0253,5.4331,0.428,18.68,""
+"Random_Forest",6.0583,3.7855,5.0877,0.4984,18.01,"yes"

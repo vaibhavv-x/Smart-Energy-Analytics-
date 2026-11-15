@@ -1,32 +1,31 @@
 #!/bin/bash
 # ==============================================================================
-# Smart Energy Analytics: one-command setup and run for macOS (Intel or Apple Silicon)
+# Smart Energy Analytics (Batch 30): one-command setup and run for macOS
 #
-# What it does, in order (every stage is safe to re-run; finished stages are skipped):
-#   1. Java 11      downloads Temurin JDK 11 into ~/bigdata (skipped if a JDK 11 is installed)
+# Tools: Hadoop HDFS + MapReduce (YARN), Apache Hive, R.   No Spark is used.
+#
+# Stages (every stage is safe to re-run; finished installs are skipped):
+#   1. Java 11      downloads Temurin JDK 11 into ~/bigdata
 #   2. Hadoop       downloads Hadoop 3.3.6 into ~/bigdata and configures a single-node cluster
 #   3. Dataset      downloads the UCI household power dataset (2,075,259 rows) into data/raw
-#   4. Python       creates a virtual environment in ~/bigdata/venv and installs the packages
-#   5. Cluster      formats HDFS (first run only) and starts NameNode, DataNode, YARN
-#   6. HDFS         creates /smart-energy and loads the full dataset
-#   7. MapReduce    runs two Hadoop Streaming jobs on YARN over the full dataset:
-#                   daily energy totals, and the hour-of-day load profile
-#   8. Pipeline     runs scripts/run_pipeline.py: cleaning, upload of the cleaned tables to HDFS,
-#                   the HiveQL queries through Spark SQL, PySpark features and Spark MLlib
-#                   forecasting (both reading from HDFS), dashboard exports, tests
-#   9. Check        compares the MapReduce-on-YARN daily totals with the pipeline's daily table
-#  10. Hive         downloads Apache Hive 4.0.1, starts HiveServer2, creates and loads the tables,
-#                   and runs the 12 HiveQL queries as MapReduce jobs on YARN
+#   4. Cluster      formats HDFS (first run only) and starts NameNode, DataNode, YARN
+#   5. HDFS         creates /smart-energy and loads the full dataset
+#   6. MapReduce    two Hadoop Streaming jobs on YARN: daily energy totals, hour-of-day load profile
+#   7. Hive         downloads Hive 4.0.1, starts HiveServer2, builds the tables from the raw data
+#                   (preprocessing), builds the feature table, runs the 12 queries on YARN
+#   8. R            trains the forecasting models and draws the graphs (needs R; installed with
+#                   Homebrew if it is missing)
+#   9. Tests        runs the automated checks
 #
 # Usage (from the project folder, in Terminal):
 #   bash run_on_mac.sh            run everything
+#   bash run_on_mac.sh hive       run only the Hive stage
+#   bash run_on_mac.sh r          run only the R stage (models and graphs)
+#   bash run_on_mac.sh test       run only the tests
 #   bash run_on_mac.sh status     show running daemons and HDFS contents
 #   bash run_on_mac.sh stop       stop HiveServer2 and the Hadoop daemons
-#   bash run_on_mac.sh hive       (re)run only the Hive stage
-#   bash run_on_mac.sh dashboard  open the Streamlit dashboard
 #
-# Nothing needs sudo or Homebrew. Everything it installs lives in ~/bigdata (about 3.5 GB);
-# delete that folder to remove it all.
+# Everything it installs lives in ~/bigdata (about 3 GB), except R (Homebrew).
 # ==============================================================================
 
 PROJECT="$(cd "$(dirname "$0")" && pwd)"
@@ -40,7 +39,6 @@ RAW_NAME="household_power_consumption.txt"
 HDFS_RAW="/smart-energy/raw/$RAW_NAME"
 HDFS_OUT="/smart-energy/mapreduce/daily_consumption"
 HDFS_OUT_HOURLY="/smart-energy/mapreduce/hourly_profile"
-HDFS_URI="hdfs://localhost:9000/smart-energy"
 HIVE_VERSION="4.0.1"
 export HIVE_HOME="$BD/apache-hive-$HIVE_VERSION-bin"
 
@@ -177,20 +175,6 @@ setup_dataset() {
   ok "$(wc -l < "$DATASET_DIR/$RAW_NAME" | tr -d ' ') lines in $RAW_NAME"
 }
 
-# ------------------------------------------------------------------------------ Python
-setup_python() {
-  say "4. Python environment"
-  python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" 2>/dev/null \
-    || die "python3 (3.9 or newer) is needed. Run:  xcode-select --install   then run this script again."
-  if [ ! -x "$VENV/bin/python" ]; then
-    python3 -m venv "$VENV" || die "Could not create the virtual environment."
-  fi
-  "$VENV/bin/python" -m pip install --quiet --upgrade pip
-  "$VENV/bin/python" -m pip install --quiet -r "$PROJECT/requirements.txt" "pyspark==3.5.3" \
-    || die "pip install failed. Check the internet connection and run again."
-  ok "$("$VENV/bin/python" --version) with $("$VENV/bin/python" -c 'import pyspark; print("PySpark", pyspark.__version__)')"
-}
-
 # ------------------------------------------------------------------------------ Cluster
 running() { "$JAVA_HOME/bin/jps" 2>/dev/null | grep -q " $1\$"; }
 
@@ -204,7 +188,7 @@ start_daemon() {   # start_daemon <command> <daemon> <jps name>
 }
 
 start_cluster() {
-  say "5. Start the single-node cluster"
+  say "4. Start the single-node cluster"
   if [ ! -d "$BD/hadoop_data/namenode/current" ]; then
     echo "Formatting HDFS (first run only) ..."
     "$HADOOP_HOME/bin/hdfs" namenode -format -nonInteractive >"$BD/format.log" 2>&1 \
@@ -233,7 +217,7 @@ start_cluster() {
 
 # ------------------------------------------------------------------------------ HDFS + MapReduce
 load_hdfs() {
-  say "6. Load the dataset into HDFS"
+  say "5. Load the dataset into HDFS"
   local h="$HADOOP_HOME/bin/hdfs"
   "$h" dfs -mkdir -p /smart-energy/raw /smart-energy/cleaned /smart-energy/mapreduce /smart-energy/hive/warehouse \
     || die "Could not create the HDFS folders."
@@ -265,7 +249,7 @@ mr_job() {   # mr_job <job name> <mapper> <reducer> <HDFS output dir> <local res
 }
 
 run_mapreduce() {
-  say "7. MapReduce on YARN (Hadoop Streaming, full dataset)"
+  say "6. MapReduce on YARN (Hadoop Streaming, full dataset)"
   echo "Job 1 of 2: daily energy totals"
   mr_job "smart-energy-daily-consumption" mapper.py reducer.py "$HDFS_OUT" mapreduce_yarn_daily_output.txt
   cp "$BD/smart-energy-daily-consumption.log" "$PROJECT/hadoop/mapreduce_yarn_job_log.txt"
@@ -274,49 +258,9 @@ run_mapreduce() {
   cp "$BD/smart-energy-hourly-profile.log" "$PROJECT/hadoop/mapreduce_yarn_hourly_job_log.txt"
 }
 
-# ------------------------------------------------------------------------------ Pipeline
-run_pipeline() {
-  say "8. Analysis pipeline (cleaning, upload to HDFS, HiveQL via Spark SQL, PySpark, MLlib, exports, tests)"
-  (
-    cd "$PROJECT" || exit 1
-    # Spark runs in local mode but reads the cleaned tables and features from HDFS by full URI.
-    export SMART_ENERGY_HDFS_URI="$HDFS_URI"
-    export SMART_ENERGY_HDFS_BIN="$HADOOP_HOME/bin/hdfs"
-    unset HADOOP_CONF_DIR YARN_CONF_DIR HADOOP_HOME
-    export SPARK_LOCAL_IP=127.0.0.1
-    "$VENV/bin/python" scripts/run_pipeline.py 2>&1 | tee "$BD/pipeline.log" \
-      | grep -E "^STEP|COMPLETED|FAILED|passed|failed|SUCCESS|Error|Traceback|hdfs://|-> hdfs"
-  )
-  if grep -q "COMPLETE PIPELINE EXECUTED" "$BD/pipeline.log"; then
-    ok "Pipeline and tests passed (full log: $BD/pipeline.log)"
-  elif grep -q "STEP 8" "$BD/pipeline.log"; then
-    echo "[NOTE] The seven pipeline steps ran, but some unit tests failed. See $BD/pipeline.log"
-  else
-    tail -25 "$BD/pipeline.log"
-    die "The pipeline stopped early. Send the lines above."
-  fi
-}
-
-compare_results() {
-  say "9. Check: MapReduce on YARN against the pipeline's daily table"
-  ( cd "$PROJECT" && "$VENV/bin/python" - <<'PY'
-import pandas as pd
-mr = pd.read_csv("hadoop/mapreduce_yarn_daily_output.txt", sep="\t", header=None, names=["date", "kwh", "readings"])
-mr["Date_ISO"] = pd.to_datetime(mr["date"], format="%d/%m/%Y").dt.strftime("%Y-%m-%d")
-daily = pd.read_csv("data/processed/daily_energy_consumption.csv")
-m = mr.merge(daily[["Date_ISO", "Energy_kWh"]], on="Date_ISO", how="inner")
-diff = (m["kwh"] - m["Energy_kWh"]).abs()
-print(f"Days from MapReduce on YARN : {len(mr):,}  (total readings {int(mr['readings'].sum()):,})")
-print(f"Days in the pipeline table  : {len(daily):,}")
-print(f"Days matched                : {len(m):,}")
-print(f"Largest difference          : {diff.max():.4f} kWh   (mean {diff.mean():.5f} kWh)")
-PY
-  ) || echo "[NOTE] Comparison skipped (one of the two result files is missing)."
-}
-
 # ------------------------------------------------------------------------------ Hive
 setup_hive() {
-  say "10. Apache Hive $HIVE_VERSION"
+  say "7. Apache Hive $HIVE_VERSION"
   if [ ! -x "$HIVE_HOME/bin/beeline" ]; then
     local tgz="$BD/apache-hive-$HIVE_VERSION-bin.tar.gz" i=0
     echo "Downloading Hive $HIVE_VERSION, about 390 MB ..."
@@ -342,6 +286,7 @@ setup_hive() {
   <property><name>hive.server2.webui.port</name><value>10002</value></property>
   <property><name>hive.exec.dynamic.partition.mode</name><value>nonstrict</value></property>
   <property><name>hive.exec.mode.local.auto</name><value>false</value></property>
+  <property><name>hive.auto.convert.join</name><value>false</value></property>
   <property><name>hive.stats.autogather</name><value>false</value></property>
   <property><name>hive.exec.scratchdir</name><value>/tmp/hive</value></property>
   <property><name>hive.exec.local.scratchdir</name><value>$BD/hive_tmp</value></property>
@@ -383,10 +328,34 @@ stop_hiveserver2() {
 run_hive() {
   setup_hive
   start_hiveserver2
-  echo "Creating the tables, loading them from HDFS and running the 12 queries (each is a MapReduce job on YARN, about 9 minutes in total) ..."
-  ( cd "$PROJECT" && "$VENV/bin/python" -u hive/run_hive_on_cluster.py 2>&1 | tee "$BD/hive_run.log" ) 
+  echo "Building the tables from the raw data, building the features and running the 12 queries (all MapReduce jobs on YARN, about 12 minutes) ..."
+  ( cd "$PROJECT" && python3 -u hive/run_hive_on_cluster.py 2>&1 | tee "$BD/hive_run.log" ) 
   grep -q "queries executed on Hive" "$BD/hive_run.log" || die "The Hive stage failed. Send the lines above (server log: $BD/hiveserver2.log)."
   ok "Hive results saved to hive/cluster_results/ and hive/hive_cluster_report.md"
+}
+
+# ------------------------------------------------------------------------------ R
+run_r() {
+  say "8. R: forecasting models and graphs"
+  if ! command -v Rscript >/dev/null 2>&1; then
+    command -v brew >/dev/null 2>&1 || die "R is not installed. Install it from https://cran.r-project.org/bin/macosx/ and run again."
+    echo "Installing R with Homebrew (a few minutes) ..."
+    brew install r || die "Could not install R. Install it from https://cran.r-project.org/bin/macosx/ and run again."
+  fi
+  Rscript -e 'lib <- Sys.getenv("R_LIBS_USER"); dir.create(lib, recursive = TRUE, showWarnings = FALSE); .libPaths(c(lib, .libPaths())); if (!requireNamespace("randomForest", quietly = TRUE)) install.packages("randomForest", lib = lib, repos = "https://cloud.r-project.org")' \
+    >"$BD/r_packages.log" 2>&1 || { tail -15 "$BD/r_packages.log"; die "Could not install the R package randomForest."; }
+  ( cd "$PROJECT" && Rscript r/forecast_models.R && Rscript r/visualize.R ) || die "The R stage failed. Send the lines above."
+  ok "Model results in r/output/, graphs in graphs/"
+}
+
+# ------------------------------------------------------------------------------ Tests
+run_tests() {
+  say "9. Tests"
+  if [ ! -x "$VENV/bin/python" ]; then python3 -m venv "$VENV" || die "Could not create the test environment."; fi
+  "$VENV/bin/python" -c "import pytest" 2>/dev/null || "$VENV/bin/python" -m pip install --quiet pytest \
+    || die "Could not install pytest. Check the internet connection and run again."
+  ( cd "$PROJECT" && "$VENV/bin/python" -m pytest tests -q -p no:cacheprovider ) || die "Some tests failed. Send the lines above."
+  ok "All tests passed"
 }
 
 # ------------------------------------------------------------------------------ Commands
@@ -394,23 +363,28 @@ case "${1:-all}" in
   all)
     free_gb=$(df -g "$HOME" | awk 'NR==2 {print $4}')
     [ "${free_gb:-10}" -ge 4 ] || die "Less than 4 GB free on disk. Free some space first."
-    setup_java; setup_hadoop; setup_dataset; setup_python
-    start_cluster; load_hdfs; run_mapreduce; run_pipeline; compare_results; run_hive
+    setup_java; setup_hadoop; setup_dataset
+    start_cluster; load_hdfs; run_mapreduce; run_hive; run_r; run_tests
     say "Finished"
     echo "HDFS UI       http://localhost:9870   (Utilities > Browse the file system > /smart-energy)"
-    echo "YARN UI       http://localhost:8088   (the finished MapReduce job is listed there)"
-    echo "HiveServer2   http://localhost:10002  (queries that ran on Hive)"
-    echo "Dashboard     bash run_on_mac.sh dashboard"
+    echo "YARN UI       http://localhost:8088   (MapReduce and Hive jobs)"
+    echo "HiveServer2   http://localhost:10002"
+    echo "Graphs        graphs/*.png            Model results  r/output/"
     echo "Stop all      bash run_on_mac.sh stop"
+    ;;
+  hive)
+    setup_java; start_cluster; run_hive
+    ;;
+  r)
+    run_r
+    ;;
+  test)
+    run_tests
     ;;
   status)
     setup_java >/dev/null
     "$JAVA_HOME/bin/jps" | grep -v Jps
     "$HADOOP_HOME/bin/hdfs" dfs -ls -R -h /smart-energy 2>/dev/null | grep -v "/hive/warehouse/.*/" | head -30
-    ;;
-  hive)
-    setup_java; [ -x "$VENV/bin/python" ] || die "Run  bash run_on_mac.sh  once first."
-    start_cluster; run_hive
     ;;
   stop)
     setup_java >/dev/null
@@ -421,8 +395,5 @@ case "${1:-all}" in
     "$HADOOP_HOME/bin/hdfs" --daemon stop namenode
     ok "HiveServer2 and the Hadoop daemons stopped"
     ;;
-  dashboard)
-    cd "$PROJECT" && "$VENV/bin/python" -m streamlit run app.py --server.address localhost
-    ;;
-  *) echo "usage: bash run_on_mac.sh [all|hive|status|stop|dashboard]"; exit 1 ;;
+  *) echo "usage: bash run_on_mac.sh [all|hive|r|test|status|stop]"; exit 1 ;;
 esac

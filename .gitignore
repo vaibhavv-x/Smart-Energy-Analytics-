@@ -6,12 +6,8 @@ __pycache__/
 # Large Raw and Intermediate Data files (> 100MB blocked by GitHub)
 data/raw/household_power_consumption.txt
 data/raw/*.zip
-data/processed/*.parquet
-data/features/*.parquet
 !data/raw/sample_household_power_consumption.txt
 !data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/features/.gitkeep
 
 # Environment and Virtual Environments
 .env
@@ -42,9 +38,12 @@ $RECYCLE.BIN/
 *.swp
 *.swo
 
-# Spark and Hadoop local runtime files
+# Hadoop and Hive local runtime files
 metastore_db/
 derby.log
-spark-warehouse/
-winutils.exe
 hadoop-*.tar.gz
+
+# R
+.Rhistory
+.RData
+Rplots.pdf

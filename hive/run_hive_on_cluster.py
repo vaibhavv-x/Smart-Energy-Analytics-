@@ -2,9 +2,11 @@
 """
 Run the HiveQL files on a real Apache Hive server (HiveServer2) through beeline.
 
-  1. hive/schema.hql              creates the database and tables
-  2. hive/load_cleaned_tables.hql loads the cleaned tables from HDFS (MapReduce jobs on YARN)
-  3. hive/queries.hql             every query is run separately; results go to hive/cluster_results/
+  1. hive/schema.hql        creates the database, the raw external table and the analysis tables
+  2. hive/build_tables.hql  preprocessing: builds the daily and hourly tables from the raw table
+  3. hive/features.hql      builds the forecasting feature table with window functions
+  4. hive/queries.hql       every query is run separately; results go to hive/cluster_results/
+  5. exports the feature table to hive/cluster_results/daily_features.csv for the R scripts
 
 Needs HiveServer2 running (run_on_mac.sh starts it) and these environment variables:
   HIVE_HOME            Hive installation folder
@@ -58,7 +60,8 @@ def parse_queries(path):
 def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
     run_file(os.path.join(HERE, "schema.hql"))
-    run_file(os.path.join(HERE, "load_cleaned_tables.hql"))
+    run_file(os.path.join(HERE, "build_tables.hql"))
+    run_file(os.path.join(HERE, "features.hql"))
 
     queries = parse_queries(os.path.join(HERE, "queries.hql"))
     report = ["# Apache Hive Execution Report (real cluster)", "",
@@ -84,6 +87,20 @@ def main():
         details += [f"## Query {number}: {title}", "", "```sql", sql, "```", "",
                     f"Result file: `hive/cluster_results/q{number:02d}.csv` ({rows} rows). First rows:", "",
                     "```", *lines[:11], "```", ""]
+
+    # Feature table for the R forecasting script
+    print("  -> Exporting daily_features")
+    res = beeline(["-u", f"{JDBC}/{DATABASE}", "-e", "SELECT * FROM daily_features ORDER BY consumption_date"])
+    if res.returncode != 0:
+        print(res.stderr[-3000:])
+        sys.exit("[-] Feature export failed.")
+    lines = [l for l in res.stdout.split("\n") if l.strip()]
+    lines[0] = ",".join(c.split(".")[-1] for c in lines[0].split(","))   # drop the table prefix from column names
+    with open(os.path.join(RESULTS_DIR, "daily_features.csv"), "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"     {len(lines) - 1} rows -> hive/cluster_results/daily_features.csv")
+    report += ["", f"The forecasting feature table (`daily_features`, {len(lines) - 1} rows) is exported to "
+               "`hive/cluster_results/daily_features.csv` for the R scripts."]
 
     with open(REPORT, "w", encoding="utf-8") as f:
         f.write("\n".join(report + [""] + details))
