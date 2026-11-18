@@ -45,6 +45,7 @@ Hadoop MapReduce on YARN                        Apache Hive (HiveServer2)
 | Feature engineering | Apache Hive (window functions) | `hive/features.hql` | `hive/cluster_results/daily_features.csv` |
 | Forecasting | R | `r/forecast_models.R` | `r/output/` |
 | Visualization | R | `r/visualize.R` | `graphs/` (12 PNG files) |
+| Interactive dashboard | R Shiny | `r/dashboard/app.R` | http://127.0.0.1:3838 |
 
 ## Key findings
 
@@ -69,6 +70,14 @@ Hadoop MapReduce on YARN                        Apache Hive (HiveServer2)
 ![Actual against predicted](graphs/10_forecast_actual_vs_predicted.png)
 
 All twelve graphs are in [graphs/](graphs/).
+
+## Interactive dashboard (R Shiny)
+
+`bash run_on_mac.sh dashboard` serves the dashboard at http://127.0.0.1:3838. Seven pages with filters: overview, time of day, seasons and weekends, what uses the energy, forecast, the 12 Hive queries with their SQL and results, and about.
+
+![Dashboard overview](screenshots/07_dashboard_overview.png)
+
+![Dashboard forecast page](screenshots/08_dashboard_forecast.png)
 
 ## The cluster, running
 
@@ -103,6 +112,7 @@ bash run_on_mac.sh            # install and run everything
 bash run_on_mac.sh start      # only start HDFS, YARN and Hive (no jobs)
 bash run_on_mac.sh hive       # run only the Hive stage
 bash run_on_mac.sh r          # run only the R stage (models and graphs)
+bash run_on_mac.sh dashboard  # live R Shiny dashboard at http://127.0.0.1:3838
 bash run_on_mac.sh test       # run only the tests
 bash run_on_mac.sh status     # running daemons and HDFS contents
 bash run_on_mac.sh stop       # stop HiveServer2 and Hadoop

@@ -164,7 +164,21 @@ R does not need Hadoop to be running: it reads the result files that MapReduce a
 
 ---
 
-## Step 8. Run the automated checks
+## Step 7b. Open the live dashboard (R Shiny)
+
+```bash
+bash run_on_mac.sh dashboard
+```
+
+**What happens:** R starts a small web server on port 3838 and opens http://127.0.0.1:3838 in your browser. If the browser does not open, paste that address into it.
+
+The dashboard has seven pages: Overview, Time of day, Seasons and weekends, What uses the energy, Forecast, Hive queries (the SQL of all 12 queries and their results) and About. You can drag the date slider, tick years and models, and pick a Hive query.
+
+It reads the results that MapReduce, Hive and R saved, so it works even when Hadoop is stopped. The Terminal window stays busy while the dashboard runs; press **Ctrl + C** in it to stop the dashboard.
+
+---
+
+## Step 8. Run the automated checks (in a new Terminal window if the dashboard is running)
 
 ```bash
 bash run_on_mac.sh test
@@ -209,12 +223,13 @@ This re-runs everything: both MapReduce jobs, all the Hive steps (building the t
 
 ---
 
-## The three web pages
+## The web pages
 
 | Address | What it is | What to show |
 |---|---|---|
 | http://localhost:9870 | HDFS (Hadoop's file system) | Utilities → Browse the file system → `/smart-energy` |
 | http://localhost:8088 | YARN (Hadoop's job manager) | The list of MapReduce and Hive jobs, all SUCCEEDED |
 | http://localhost:10002 | Hive server | Sessions and the queries that ran |
+| http://127.0.0.1:3838 | Our R Shiny dashboard | All the results, with filters (runs while Step 7b is running) |
 
 They only work while the cluster is running (after Step 2, before Step 9).

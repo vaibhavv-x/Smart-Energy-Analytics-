@@ -22,6 +22,7 @@
 #   bash run_on_mac.sh start      only start HDFS, YARN and HiveServer2 (no jobs)
 #   bash run_on_mac.sh hive       run only the Hive stage
 #   bash run_on_mac.sh r          run only the R stage (models and graphs)
+#   bash run_on_mac.sh dashboard  open the R Shiny dashboard at http://127.0.0.1:3838
 #   bash run_on_mac.sh test       run only the tests
 #   bash run_on_mac.sh status     show running daemons and HDFS contents
 #   bash run_on_mac.sh stop       stop HiveServer2 and the Hadoop daemons
@@ -343,8 +344,8 @@ run_r() {
     echo "Installing R with Homebrew (a few minutes) ..."
     brew install r || die "Could not install R. Install it from https://cran.r-project.org/bin/macosx/ and run again."
   fi
-  Rscript -e 'lib <- Sys.getenv("R_LIBS_USER"); dir.create(lib, recursive = TRUE, showWarnings = FALSE); .libPaths(c(lib, .libPaths())); if (!requireNamespace("randomForest", quietly = TRUE)) install.packages("randomForest", lib = lib, repos = "https://cloud.r-project.org")' \
-    >"$BD/r_packages.log" 2>&1 || { tail -15 "$BD/r_packages.log"; die "Could not install the R package randomForest."; }
+  Rscript -e 'lib <- Sys.getenv("R_LIBS_USER"); dir.create(lib, recursive = TRUE, showWarnings = FALSE); .libPaths(c(lib, .libPaths())); for (p in c("randomForest", "shiny")) if (!requireNamespace(p, quietly = TRUE)) install.packages(p, lib = lib, repos = "https://cloud.r-project.org", Ncpus = 4)' \
+    >"$BD/r_packages.log" 2>&1 || { tail -15 "$BD/r_packages.log"; die "Could not install the R packages (randomForest, shiny)."; }
   ( cd "$PROJECT" && Rscript r/forecast_models.R && Rscript r/visualize.R ) || die "The R stage failed. Send the lines above."
   ok "Model results in r/output/, graphs in graphs/"
 }
@@ -371,6 +372,7 @@ case "${1:-all}" in
     echo "YARN UI       http://localhost:8088   (MapReduce and Hive jobs)"
     echo "HiveServer2   http://localhost:10002"
     echo "Graphs        graphs/*.png            Model results  r/output/"
+    echo "Dashboard     bash run_on_mac.sh dashboard   (http://127.0.0.1:3838)"
     echo "Stop all      bash run_on_mac.sh stop"
     ;;
   start)
@@ -384,6 +386,14 @@ case "${1:-all}" in
     ;;
   r)
     run_r
+    ;;
+  dashboard)
+    command -v Rscript >/dev/null 2>&1 || die "R is not installed. Run  bash run_on_mac.sh  first."
+    [ -f "$PROJECT/r/output/model_metrics.csv" ] || die "No results yet. Run  bash run_on_mac.sh  first."
+    Rscript -e 'lib <- Sys.getenv("R_LIBS_USER"); dir.create(lib, recursive = TRUE, showWarnings = FALSE); .libPaths(c(lib, .libPaths())); if (!requireNamespace("shiny", quietly = TRUE)) install.packages("shiny", lib = lib, repos = "https://cloud.r-project.org", Ncpus = 4)' \
+      || die "Could not install the R package shiny."
+    echo "Dashboard running at http://127.0.0.1:3838  (press Ctrl+C here to stop it)"
+    cd "$PROJECT" && Rscript -e 'shiny::runApp("r/dashboard", port = 3838, host = "127.0.0.1", launch.browser = TRUE)'
     ;;
   test)
     run_tests
@@ -402,5 +412,5 @@ case "${1:-all}" in
     "$HADOOP_HOME/bin/hdfs" --daemon stop namenode
     ok "HiveServer2 and the Hadoop daemons stopped"
     ;;
-  *) echo "usage: bash run_on_mac.sh [all|start|hive|r|test|status|stop]"; exit 1 ;;
+  *) echo "usage: bash run_on_mac.sh [all|start|hive|r|dashboard|test|status|stop]"; exit 1 ;;
 esac
