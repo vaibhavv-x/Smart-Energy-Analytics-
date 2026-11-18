@@ -19,6 +19,7 @@
 #
 # Usage (from the project folder, in Terminal):
 #   bash run_on_mac.sh            run everything
+#   bash run_on_mac.sh start      only start HDFS, YARN and HiveServer2 (no jobs)
 #   bash run_on_mac.sh hive       run only the Hive stage
 #   bash run_on_mac.sh r          run only the R stage (models and graphs)
 #   bash run_on_mac.sh test       run only the tests
@@ -372,6 +373,12 @@ case "${1:-all}" in
     echo "Graphs        graphs/*.png            Model results  r/output/"
     echo "Stop all      bash run_on_mac.sh stop"
     ;;
+  start)
+    setup_java; start_cluster; start_hiveserver2
+    echo "HDFS UI       http://localhost:9870"
+    echo "YARN UI       http://localhost:8088"
+    echo "HiveServer2   http://localhost:10002"
+    ;;
   hive)
     setup_java; start_cluster; run_hive
     ;;
@@ -395,5 +402,5 @@ case "${1:-all}" in
     "$HADOOP_HOME/bin/hdfs" --daemon stop namenode
     ok "HiveServer2 and the Hadoop daemons stopped"
     ;;
-  *) echo "usage: bash run_on_mac.sh [all|hive|r|test|status|stop]"; exit 1 ;;
+  *) echo "usage: bash run_on_mac.sh [all|start|hive|r|test|status|stop]"; exit 1 ;;
 esac

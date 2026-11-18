@@ -94,10 +94,13 @@ HiveServer2:
 
 ## How to run (macOS)
 
+**Step-by-step demo guide:** [HOW_TO_RUN.md](HOW_TO_RUN.md) (start the cluster, look at HDFS, run a MapReduce job and Hive queries live, run R).
+
 You need a Mac with 8 GB of RAM, about 5 GB of free disk space, `python3` and Homebrew (for R). No sudo is needed.
 
 ```bash
 bash run_on_mac.sh            # install and run everything
+bash run_on_mac.sh start      # only start HDFS, YARN and Hive (no jobs)
 bash run_on_mac.sh hive       # run only the Hive stage
 bash run_on_mac.sh r          # run only the R stage (models and graphs)
 bash run_on_mac.sh test       # run only the tests
