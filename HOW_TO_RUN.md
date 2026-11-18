@@ -1,5 +1,7 @@
 # How to run the project, step by step
 
+> **Easiest way:** run the numbered scripts in the [steps/](steps/) folder, one per stage (see [steps/README.md](steps/README.md)). This page shows the same stages with the commands typed by hand, which is useful for showing each tool live.
+
 This guide is for running and showing the project on the MacBook where it is already installed. Everything is typed in the **Terminal** app; results are seen in the **browser** (Chrome or Safari) and in **Finder**.
 
 Total time for the full demo: about 15 minutes.

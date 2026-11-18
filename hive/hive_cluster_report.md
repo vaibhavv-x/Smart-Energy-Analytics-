@@ -4,18 +4,18 @@ Executed through HiveServer2 (`jdbc:hive2://localhost:10000`) with the MapReduce
 
 | Query | Rows | Seconds |
 |---|---|---|
-| Q1: Daily Electricity Consumption Time-Series | 1420 | 22.0 |
-| Q2: Monthly Electricity Consumption Aggregations | 48 | 42.7 |
-| Q3: Average Hourly Consumption Profile (24-Hour Diurnal Cycle) | 24 | 43.7 |
-| Q4: Peak Consumption Hours Identification | 5 | 46.7 |
-| Q5: Top 10 Highest Consumption Dates (Historical Peaks) | 10 | 23.6 |
-| Q6: Weekday versus Weekend Energy Usage Patterns | 2 | 22.7 |
-| Q7: Seasonal Monthly Energy Trends | 12 | 43.4 |
-| Q8: Sub-Metering End-Use Distribution & Breakdown | 1 | 25.3 |
-| Q9: Year-on-Year Change in Monthly Consumption | 36 | 84.0 |
-| Q10: Share of High-Consumption Days (above 40 kWh) per Year | 5 | 41.5 |
-| Q11: Consumption by Time-of-Day Band | 4 | 63.8 |
-| Q12: Data Quality per Year on the Raw Table (2,075,259 rows in HDFS) | 5 | 45.5 |
+| Q1: Daily Electricity Consumption Time-Series | 1420 | 20.1 |
+| Q2: Monthly Electricity Consumption Aggregations | 48 | 40.7 |
+| Q3: Average Hourly Consumption Profile (24-Hour Diurnal Cycle) | 24 | 41.2 |
+| Q4: Peak Consumption Hours Identification | 5 | 40.3 |
+| Q5: Top 10 Highest Consumption Dates (Historical Peaks) | 10 | 21.0 |
+| Q6: Weekday versus Weekend Energy Usage Patterns | 2 | 22.0 |
+| Q7: Seasonal Monthly Energy Trends | 12 | 42.3 |
+| Q8: Sub-Metering End-Use Distribution & Breakdown | 1 | 22.1 |
+| Q9: Year-on-Year Change in Monthly Consumption | 36 | 83.7 |
+| Q10: Share of High-Consumption Days (above 40 kWh) per Year | 5 | 41.3 |
+| Q11: Consumption by Time-of-Day Band | 4 | 61.5 |
+| Q12: Data Quality per Year on the Raw Table (2,075,259 rows in HDFS) | 5 | 43.8 |
 
 The forecasting feature table (`daily_features`, 1413 rows) is exported to `hive/cluster_results/daily_features.csv` for the R scripts.
 

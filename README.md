@@ -103,7 +103,11 @@ HiveServer2:
 
 ## How to run (macOS)
 
-**Step-by-step demo guide:** [HOW_TO_RUN.md](HOW_TO_RUN.md) (start the cluster, look at HDFS, run a MapReduce job and Hive queries live, run R).
+**Run it stage by stage:** the [steps/](steps/) folder has one numbered script per stage, from `00_check_setup.sh` to `11_stop_everything.sh`; see [steps/README.md](steps/README.md).
+
+**Demo guide with hand-typed commands:** [HOW_TO_RUN.md](HOW_TO_RUN.md).
+
+**Plain-language explanation of every tool and every query:** [docs/project_explained.md](docs/project_explained.md).
 
 You need a Mac with 8 GB of RAM, about 5 GB of free disk space, `python3` and Homebrew (for R). No sudo is needed.
 
@@ -151,6 +155,7 @@ The full file (`data/raw/household_power_consumption.txt`, 126.8 MB) is not stor
 
 ```
 ├── run_on_mac.sh              one-command setup and run
+├── steps/                     one script per stage, run in order (00 to 11)
 ├── hadoop/                    MapReduce mappers and reducers, job outputs and logs from YARN
 ├── hive/                      schema, preprocessing, queries, features, runner, results
 ├── r/                         forecasting and visualization scripts, model results

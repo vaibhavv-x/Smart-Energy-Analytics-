@@ -8,11 +8,17 @@ Run the HiveQL files on a real Apache Hive server (HiveServer2) through beeline.
   4. hive/queries.hql       every query is run separately; results go to hive/cluster_results/
   5. exports the feature table to hive/cluster_results/daily_features.csv for the R scripts
 
+Options:
+  --build-only    only steps 1 to 3 (create the tables, preprocessing, features)
+  --queries-only  only steps 4 and 5 (the 12 queries and the feature export)
+  --show N        also print the first N rows of each query result
+
 Needs HiveServer2 running (run_on_mac.sh starts it) and these environment variables:
   HIVE_HOME            Hive installation folder
   HIVE_JDBC_URL        optional, default jdbc:hive2://localhost:10000
 """
 
+import argparse
 import getpass
 import os
 import re
@@ -58,10 +64,20 @@ def parse_queries(path):
 
 
 def main():
+    ap = argparse.ArgumentParser(description="Run the HiveQL files on HiveServer2.")
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument("--build-only", action="store_true", help="only create the tables, preprocess and build features")
+    group.add_argument("--queries-only", action="store_true", help="only run the 12 queries and export the features")
+    ap.add_argument("--show", type=int, default=0, metavar="N", help="print the first N rows of each query result")
+    args = ap.parse_args()
+
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    run_file(os.path.join(HERE, "schema.hql"))
-    run_file(os.path.join(HERE, "build_tables.hql"))
-    run_file(os.path.join(HERE, "features.hql"))
+    if not args.queries_only:
+        run_file(os.path.join(HERE, "schema.hql"))
+        run_file(os.path.join(HERE, "build_tables.hql"))
+        run_file(os.path.join(HERE, "features.hql"))
+        if args.build_only:
+            return
 
     queries = parse_queries(os.path.join(HERE, "queries.hql"))
     report = ["# Apache Hive Execution Report (real cluster)", "",
@@ -83,6 +99,11 @@ def main():
             f.write("\n".join(lines) + "\n")
         rows = max(len(lines) - 1, 0)
         print(f"     {rows} rows in {elapsed:.1f}s -> {os.path.relpath(out, os.path.dirname(HERE))}")
+        if args.show:
+            for line in lines[:args.show + 1]:
+                print("       " + line.replace(",", "  |  "))
+            if rows > args.show:
+                print(f"       ... {rows - args.show} more rows")
         report.append(f"| Q{number}: {title} | {rows} | {elapsed:.1f} |")
         details += [f"## Query {number}: {title}", "", "```sql", sql, "```", "",
                     f"Result file: `hive/cluster_results/q{number:02d}.csv` ({rows} rows). First rows:", "",
